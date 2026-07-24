@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Email</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>{{ usuario.username }}</td>
+                <td>{{ usuario.email }}</td>
+            </tr>
+        </tbody>
+    </table>
+    <form action="{% url 'usuarios:usuarios_remover' id=usuario.id %}" method="post">
+        {% csrf_token %}
+        <p>Tem certeza que deseja remover o usuário "{{ usuario.username }}"?</p>
+        <input type="submit" value="Sim">
+        <a href="{% url 'usuarios:usuarios_home' %}">Não</a>
+    </form>
+</body>
+</html>

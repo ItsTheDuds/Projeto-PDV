@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Page</title>
+</head>
+<body>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Email</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for usuario in usuarios %}
+            <tr>
+                <td>{{ usuario.username }}</td>
+                <td>{{ usuario.email }}</td>
+                <td>
+                    <a href="{% url 'usuarios:usuarios_remover' id=usuario.id %}">Remover</a>
+                </td>
+                <td>
+                    <a href="{% url 'usuarios:usuarios_editar' id=usuario.id %}">Editar</a>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <br>
+    <a href="{% url 'usuarios:usuarios_adicionar' %}">Adicionar</a>
+    <a href="{% url 'home' %}">Voltar</a>
+</body>
+</html>
