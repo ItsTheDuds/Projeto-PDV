@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BUSCAR</title>
+</head>
+<body>
+    <h1>Bem-vindo à página de busca de usuários!</h1>
+    <form action="{% url 'usuarios:usuarios_buscar' %}" method="get">
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required>
+        <button type="submit">Buscar</button>
+    </form>
+    {% if usuarios %}
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>USUÁRIOS</th>
+                    <th>E-MAIL</th>
+                    <th>REMOVER</th>
+                    <th>EDITAR</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for usuario in usuarios %}
+                <tr>
+                    <td>{{ usuario.username }}</td>
+                    <td>{{ usuario.email }}</td>
+                    <td>
+                        <a href="{% url 'usuarios:usuarios_remover' id=usuario.id %}">Remover</a>
+                    </td>
+                    <td>
+                        <a href="{% url 'usuarios:usuarios_editar' id=usuario.id %}">Editar</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Nenhum usuário encontrado.</p>
+    {% endif %}
+    <br>
+    <a href="{% url 'usuarios:usuarios_home' %}">Voltar</a>
+    <br>
+</body>
+</html>

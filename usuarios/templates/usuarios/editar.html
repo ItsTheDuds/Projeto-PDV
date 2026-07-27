@@ -6,7 +6,7 @@
     <title>Editar Usuário</title>
 </head>
 <body>
-    <h1>Editar Usuário</h1>
+    <h1>Bem-vindo à página de edição de usuário!</h1>
     <form action="{% url 'usuarios:usuarios_editar' id=usuario.id %}" method="post">
         {% csrf_token %}
         {{ form }}

@@ -48,3 +48,15 @@ def usuarios_editar(request, id):
         'usuario': usuario
     }
     return render(request, 'usuarios/editar.html', context)
+
+def usuarios_buscar(request):
+    query = request.GET.get('username')
+    if query:
+        usuarios = usuariosModel.objects.filter(username__icontains=query)
+    else:
+        usuarios = usuariosModel.objects.none()
+    context = {
+        'usuarios': usuarios,
+        'query': query
+    }
+    return render(request, 'usuarios/buscar.html', context)

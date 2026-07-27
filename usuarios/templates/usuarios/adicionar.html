@@ -6,6 +6,7 @@
     <title>Document</title>
 </head>
 <body>
+    <h1>Bem-vindo à página de adição de usuário!</h1>
 <form action="{% url 'usuarios:usuarios_adicionar' %}" method="post">
     {% csrf_token %}
     {{form}}
