@@ -1,11 +1,57 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home</title>
+    <title>Menu Principal - Sistema de Cadastro</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; color: #333; margin: 0; padding: 0; }
+        .navbar { background-color: #212529; padding: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 3rem; }
+        .navbar-brand { color: #fff; text-decoration: none; font-weight: bold; font-size: 1.25rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 0 15px; text-align: center; }
+        .welcome-title { font-size: 2.25rem; color: #212529; margin-bottom: 0.5rem; font-weight: 700; }
+        .welcome-subtitle { font-size: 1.1rem; color: #6c757d; margin-bottom: 3rem; }
+        .grid-modules { display: flex; gap: 2rem; justify-content: center; flex-wrap: wrap; }
+        .module-card { background: #fff; border-radius: 0.5rem; box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.05); padding: 2.5rem 2rem; border: 1px solid #dee2e6; text-decoration: none; color: inherit; flex: 1; min-width: 280px; max-width: 380px; transition: transform 0.2s, box-shadow 0.2s; box-sizing: border-box; }
+        .module-card:hover { transform: translateY(-5px); box-shadow: 0 0.75rem 1.5rem rgba(0,0,0,0.1); border-color: #b6effb; }
+        .module-icon { font-size: 3rem; margin-bottom: 1rem; display: block; }
+        .module-title { font-size: 1.5rem; font-weight: 600; color: #212529; margin: 0 0 0.75rem 0; }
+        .module-desc { color: #6c757d; font-size: 0.95rem; line-height: 1.5; margin: 0; }
+        .footer-text { margin-top: 4rem; color: #adb5bd; font-size: 0.85rem; }
+    </style>
 </head>
 <body>
-    <a href="{% url 'usuarios:usuarios_home' %}">Gerenciar Usuários</a>
+
+    <!-- Barra de Navegação -->
+    <nav class="navbar">
+        <div class="container" style="text-align: left;">
+            <a class="navbar-brand" href="#">🖥️ Sistema Integrado</a>
+        </div>
+    </nav>
+
+    <!-- Painel Central -->
+    <div class="container">
+        <h1 class="welcome-title">Painel de Controle</h1>
+        <p class="welcome-subtitle">Selecione o módulo que deseja gerenciar abaixo</p>
+
+        <div class="grid-modules">
+            <!-- Card de Usuários -->
+            <a href="{% url 'usuarios:usuarios_home' %}" class="module-card">
+                <span class="module-icon">👥</span>
+                <h2 class="module-title">Controle de Usuários</h2>
+                <p class="module-desc">Cadastre novos perfis, busque por credenciais cadastradas, edite informações ou remova contas do banco de dados.</p>
+            </a>
+
+            <!-- Card de Produtos -->
+            <a href="{% url 'produtos:produtos_home' %}" class="module-card">
+                <span class="module-icon">📦</span>
+                <h2 class="module-title">Controle de Produtos</h2>
+                <p class="module-desc">Gerencie o catálogo de itens, atualize preços de venda, controle o estoque disponível e faça buscas avançadas.</p>
+            </a>
+        </div>
+
+        <p class="footer-text">Ambiente de Desenvolvimento — Django Admin</p>
+    </div>
+
 </body>
 </html>
