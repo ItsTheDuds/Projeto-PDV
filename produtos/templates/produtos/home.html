@@ -2,6 +2,7 @@
 
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,10 +20,10 @@
     <!-- ==================================================
          NAVBAR
     =================================================== -->
+
     <nav class="navbar">
         <div class="container">
-            {% url 'home' %}
-                ⚙️ Dashboard Produtos
+            <a class="navbar-brand" href="{% url 'home' %}">⚙️ Dashboard Produtos
             </a>
         </div>
     </nav>
@@ -68,9 +69,7 @@
 
                         <!-- Imagem do produto -->
                         <div class="product-image">
-                            <img
-                                class="pic-1"
-                                src="https://www.bootdey.com/image/280x300/FFB6C1/000000"
+                            <img class="pic-1" src="https://www.bootdey.com/image/280x300/FFB6C1/000000"
                                 alt="{{ produto.nome }}">
                         </div>
 
