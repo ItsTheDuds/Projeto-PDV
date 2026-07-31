@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'usuarios',
     'produtos',
+    'vendas',
 ]
 
 MIDDLEWARE = [
@@ -56,7 +57,7 @@ ROOT_URLCONF = 'projeto.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates', BASE_DIR / 'templates' / 'produtos', BASE_DIR / 'templates' / 'usuarios'],
+        'DIRS': [BASE_DIR / 'templates', BASE_DIR / 'templates' / 'produtos', BASE_DIR / 'templates' / 'usuarios', BASE_DIR / 'templates' / 'vendas'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

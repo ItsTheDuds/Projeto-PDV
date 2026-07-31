@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -19,6 +20,7 @@
         .module-desc { color: #6c757d; font-size: 0.95rem; line-height: 1.5; margin: 0; }
         .footer-text { margin-top: 4rem; color: #adb5bd; font-size: 0.85rem; }
     </style>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
 
@@ -47,6 +49,11 @@
                 <span class="module-icon">📦</span>
                 <h2 class="module-title">Controle de Produtos</h2>
                 <p class="module-desc">Gerencie o catálogo de itens, atualize preços de venda, controle o estoque disponível e faça buscas avançadas.</p>
+            </a>
+            <a href="{% url 'vendas:home' %}" class="module-card">
+                <span class="module-icon">🛒</span>
+                <h2 class="module-title">Gerar Venda</h2>
+                <p class="module-desc">Realize vendas, gerencie pedidos e acompanhe o histórico de transações.</p>
             </a>
         </div>
 
