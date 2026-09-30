@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:720px; margin:0 auto;">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">{{ titulo }}</h1>
+            <p class="subtitle">Informe os dados comerciais do produto.</p>
+        </div>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <div class="form-actions">
+            <a href="{% url 'produtos:produtos_home' %}" class="btn btn-light">Cancelar</a>
+            <button type="submit" class="btn btn-success">{{ acao }}</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

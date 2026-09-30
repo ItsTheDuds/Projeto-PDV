@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}Venda #{{ venda.id }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Venda #{{ venda.id }}</h1>
+            <p class="subtitle">{{ venda.criada_em|date:"d/m/Y H:i" }} — {{ venda.get_forma_pagamento_display }}</p>
+        </div>
+        <div class="actions no-print">
+            <button type="button" class="btn btn-outline" onclick="window.print()">Imprimir</button>
+            <a href="{% url 'vendas:historico' %}" class="btn btn-dark">Histórico</a>
+            <a href="{% url 'vendas:home' %}" class="btn btn-success">Nova venda</a>
+        </div>
+    </div>
+
+    <div class="grid grid-2" style="margin-bottom:1.5rem;">
+        <div>
+            <div class="muted">Cliente</div>
+            <strong>
+                {% if venda.cliente %}
+                    {{ venda.cliente.nome }}
+                {% else %}
+                    Venda balcão
+                {% endif %}
+            </strong>
+            {% if venda.cliente %}
+            <div class="muted">{{ venda.cliente.celular }}</div>
+            {% endif %}
+        </div>
+        <div>
+            <div class="muted">Pagamento</div>
+            <strong>{{ venda.get_forma_pagamento_display }}</strong>
+            {% if fiado %}
+                <div style="margin-top:.35rem;">
+                    {% if fiado.pago %}
+                        <span class="badge badge-paid">PAGO</span>
+                    {% else %}
+                        <span class="badge badge-open">EM ABERTO</span>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>PRODUTO</th>
+                    <th>QTD.</th>
+                    <th>PREÇO UNIT.</th>
+                    <th>SUBTOTAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in venda.itens.all %}
+                <tr>
+                    <td>{{ item.produto.nome }}</td>
+                    <td>{{ item.quantidade }}</td>
+                    <td>R$ {{ item.preco_unitario|floatformat:2 }}</td>
+                    <td class="money">R$ {{ item.subtotal|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <h2 class="text-right">Total: R$ {{ venda.total|floatformat:2 }}</h2>
+
+    {% if fiado and not fiado.pago %}
+    <div class="no-print" style="text-align:right;">
+        <a href="{% url 'fiado:detalhe' fiado.id %}" class="btn btn-warning">Abrir controle do fiado</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

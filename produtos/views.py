@@ -1,65 +1,81 @@
-from django.shortcuts import render
-from django.http import HttpResponse
-from .models import produtosModel
-from django.shortcuts import get_object_or_404
-from django.shortcuts import redirect
-from .forms import produtoForm
+from django.contrib import messages
+from django.db.models.deletion import ProtectedError
+from django.shortcuts import get_object_or_404, redirect, render
 
-# Create your views here.
+from .forms import produtoForm
+from .models import produtosModel
+
+
 def produtos_home(request):
-    context = {
-        "produtos": produtosModel.objects.all()
-    }
-    return render(request, 'produtos/home.html', context)
+    return render(
+        request,
+        'produtos/home.html',
+        {'produtos': produtosModel.objects.all().order_by('nome')},
+    )
+
 
 def produtos_adicionar(request):
-    if request.method == 'POST':
-        form = produtoForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('produtos:produtos_home')
-    else:
-        form = produtoForm()
-    context = {
-        'form': form
-    }
-    return render(request, 'produtos/adicionar.html', context)
+    form = produtoForm(request.POST or None)
+
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'Produto cadastrado com sucesso.')
+        return redirect('produtos:produtos_home')
+
+    return render(
+        request,
+        'produtos/form.html',
+        {'form': form, 'titulo': 'Adicionar produto', 'acao': 'Cadastrar produto'},
+    )
+
 
 def produtos_buscar(request):
-    query = request.GET.get('nome')
-    if query:
-        produtos = produtosModel.objects.filter(nome__icontains=query)
-    else:
-        produtos = produtosModel.objects.none()
-    context = {
-        'produtos': produtos,
-        'query': query
-    }
-    return render(request, 'produtos/buscar.html', context)
+    query = request.GET.get('nome', '').strip()
+    produtos = produtosModel.objects.none()
 
-# Mude de: def produtos_editar(request, produto_id):
-def produtos_editar(request, id): # <--- Alterado aqui
+    if query:
+        produtos = produtosModel.objects.filter(nome__icontains=query).order_by('nome')
+
+    return render(
+        request,
+        'produtos/buscar.html',
+        {'produtos': produtos, 'query': query},
+    )
+
+
+def produtos_editar(request, id):
     produto = get_object_or_404(produtosModel, id=id)
-    if request.method == 'POST':
-        form = produtoForm(request.POST, instance=produto)
-        if form.is_valid():
-            form.save()
-            return redirect('produtos:produtos_home')
-    else:
-        form = produtoForm(instance=produto)
-    context = {
-        'form': form,
-        'produto': produto
-    }
-    return render(request, 'produtos/editar.html', context)
+    form = produtoForm(request.POST or None, instance=produto)
+
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'Produto atualizado com sucesso.')
+        return redirect('produtos:produtos_home')
+
+    return render(
+        request,
+        'produtos/form.html',
+        {
+            'form': form,
+            'produto': produto,
+            'titulo': f'Editar produto: {produto.nome}',
+            'acao': 'Salvar alterações',
+        },
+    )
+
 
 def produtos_remover(request, id):
     produto = get_object_or_404(produtosModel, id=id)
-    if request.method == 'POST':
-        produto.delete()
-        return redirect('produtos:produtos_home')
-    context = {
-        'produto': produto
-    }
-    return render(request, 'produtos/remover.html', context)
 
+    if request.method == 'POST':
+        try:
+            produto.delete()
+            messages.success(request, 'Produto removido com sucesso.')
+        except ProtectedError:
+            messages.error(
+                request,
+                'Este produto já aparece em vendas e não pode ser removido. Edite o estoque para 0 se não quiser mais vendê-lo.',
+            )
+        return redirect('produtos:produtos_home')
+
+    return render(request, 'produtos/remover.html', {'produto': produto})

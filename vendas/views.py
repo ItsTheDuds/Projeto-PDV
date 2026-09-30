@@ -2,6 +2,7 @@ import json
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
+from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST
@@ -20,6 +21,51 @@ def home(request):
         request,
         'PDV/home.html',
         {'produtos': produtos, 'clientes': clientes},
+    )
+
+
+def historico(request):
+    vendas = Venda.objects.select_related('cliente').prefetch_related('itens__produto')
+
+    forma_pagamento = request.GET.get('forma_pagamento', '').strip()
+    query = request.GET.get('q', '').strip()
+
+    formas_validas = {codigo for codigo, _ in Venda.FORMAS_PAGAMENTO}
+    if forma_pagamento in formas_validas:
+        vendas = vendas.filter(forma_pagamento=forma_pagamento)
+
+    if query:
+        filtro = Q(cliente__nome__icontains=query) | Q(cliente__celular__icontains=query)
+        if query.isdigit():
+            filtro |= Q(id=int(query))
+        vendas = vendas.filter(filtro)
+
+    return render(
+        request,
+        'vendas/historico.html',
+        {
+            'vendas': vendas,
+            'formas_pagamento': Venda.FORMAS_PAGAMENTO,
+            'forma_selecionada': forma_pagamento,
+            'query': query,
+        },
+    )
+
+
+def detalhe(request, id):
+    venda = get_object_or_404(
+        Venda.objects.select_related('cliente').prefetch_related('itens__produto'),
+        id=id,
+    )
+
+    fiado = None
+    if venda.forma_pagamento == Venda.FIADO:
+        fiado = getattr(venda, 'fiado', None)
+
+    return render(
+        request,
+        'vendas/detalhe.html',
+        {'venda': venda, 'fiado': fiado},
     )
 
 

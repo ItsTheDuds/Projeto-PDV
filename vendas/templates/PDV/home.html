@@ -2,33 +2,134 @@
 
 {% block title %}Gerar Venda{% endblock %}
 
+{% block extra_head %}
+<style>
+    .venda-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(360px, 1fr);
+        gap: 1rem;
+        align-items: start;
+    }
+    .produto-lista {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+    }
+    .produto-card {
+        text-align: left;
+        cursor: pointer;
+        transition: transform .15s, border-color .15s, box-shadow .15s;
+    }
+    .produto-card:hover {
+        transform: translateY(-2px);
+        border-color: #adb5bd;
+        box-shadow: 0 .3rem .8rem rgba(0,0,0,.08);
+    }
+    .carrinho-table {
+        min-width: 520px;
+    }
+    .quantidade-controle {
+        display: inline-grid;
+        grid-template-columns: 34px 42px 34px;
+        align-items: center;
+        border: 1px solid #ced4da;
+        border-radius: .375rem;
+        overflow: hidden;
+        background: #fff;
+    }
+    .quantidade-controle button {
+        border: 0;
+        background: #f1f3f5;
+        height: 34px;
+        cursor: pointer;
+        font-size: 1.1rem;
+    }
+    .quantidade-controle span {
+        text-align: center;
+        font-weight: 700;
+        padding: 0 .25rem;
+    }
+    .preco-venda {
+        width: 105px;
+        min-width: 105px;
+    }
+    .cliente-search-wrap {
+        position: relative;
+    }
+    .cliente-resultados {
+        display: none;
+        position: absolute;
+        z-index: 30;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        max-height: 240px;
+        overflow-y: auto;
+        background: #fff;
+        border: 1px solid #ced4da;
+        border-radius: .375rem;
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.12);
+    }
+    .cliente-opcao {
+        width: 100%;
+        border: 0;
+        background: #fff;
+        text-align: left;
+        padding: .7rem .8rem;
+        cursor: pointer;
+        border-bottom: 1px solid #f1f3f5;
+    }
+    .cliente-opcao:hover {
+        background: #f8f9fa;
+    }
+    .cliente-selecionado {
+        margin-top: .5rem;
+        padding: .65rem .75rem;
+        border-radius: .375rem;
+        background: #e7f1ff;
+        color: #084298;
+        display: none;
+    }
+    @media (max-width: 980px) {
+        .venda-layout { grid-template-columns: 1fr; }
+        .produto-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 620px) {
+        .produto-lista { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <form style="display:none;">{% csrf_token %}</form>
+
 <div class="page-header">
     <div>
         <h1 class="page-title">Gerar venda</h1>
-        <p class="subtitle">O backend valida estoque, preço e total antes de gravar a venda.</p>
+        <p class="subtitle">Selecione os produtos e finalize a venda. Estoque e total são validados pelo sistema.</p>
+    </div>
+    <div class="actions">
+        <a href="{% url 'vendas:historico' %}" class="btn btn-dark">Histórico de vendas</a>
     </div>
 </div>
 
-<div class="grid" style="grid-template-columns:minmax(0,2fr) minmax(320px,1fr); align-items:start;">
+<div class="venda-layout">
     <div class="card">
         <div class="page-header">
             <div>
                 <h2 style="margin:0;">Produtos</h2>
-                <p class="subtitle">Clique em um produto para adicionar ao carrinho.</p>
+                <p class="subtitle">Clique para adicionar ao carrinho.</p>
             </div>
             <input id="buscaProduto" placeholder="Pesquisar produto..." style="max-width:300px;">
         </div>
 
-        <div id="listaProdutos" class="grid grid-3">
+        <div id="listaProdutos" class="produto-lista">
             {% for produto in produtos %}
             <button type="button"
-                    class="card produto"
+                    class="card produto-card"
                     data-nome="{{ produto.nome|lower }}"
-                    onclick="adicionarProduto('{{ produto.id }}', '{{ produto.nome|escapejs }}', '{{ produto.preco }}', '{{ produto.quantidade }}')"
-                    style="text-align:left; cursor:pointer;">
-                <strong>{{ produto.nome }}</strong>
+                    onclick="adicionarProduto('{{ produto.id }}', '{{ produto.nome|escapejs }}', '{{ produto.preco }}', '{{ produto.quantidade }}')">
+                <strong style="font-size:1.05rem;">{{ produto.nome }}</strong>
                 <div class="money" style="margin:.5rem 0;">R$ {{ produto.preco }}</div>
                 <small class="muted">Estoque: {{ produto.quantidade }}</small>
             </button>
@@ -52,28 +153,48 @@
         </div>
 
         <div id="clienteBox" style="display:none; margin-bottom:1rem;">
-            <label for="cliente">Cliente</label>
-            <select id="cliente">
-                <option value="">Selecione...</option>
-                {% for cliente in clientes %}
-                <option value="{{ cliente.id }}">{{ cliente.nome }} — {{ cliente.celular }}</option>
-                {% endfor %}
-            </select>
+            <label for="buscaCliente">Cliente</label>
+            <div class="cliente-search-wrap">
+                <input id="buscaCliente"
+                       autocomplete="off"
+                       placeholder="Digite nome ou celular"
+                       oninput="filtrarClientes()"
+                       onfocus="filtrarClientes()">
+                <input type="hidden" id="clienteId">
+                <div id="clienteResultados" class="cliente-resultados">
+                    {% for cliente in clientes %}
+                    <button type="button"
+                            class="cliente-opcao"
+                            data-id="{{ cliente.id }}"
+                            data-nome="{{ cliente.nome|lower }}"
+                            data-celular="{{ cliente.celular|lower }}"
+                            data-label="{{ cliente.nome|escapejs }} — {{ cliente.celular|escapejs }}"
+                            onclick="selecionarCliente(this)">
+                        <strong>{{ cliente.nome }}</strong><br>
+                        <small class="muted">{{ cliente.celular }}</small>
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+            <div id="clienteSelecionado" class="cliente-selecionado"></div>
         </div>
 
         <div class="table-wrap">
-            <table>
+            <table class="carrinho-table">
                 <thead>
                     <tr>
                         <th>Produto</th>
                         <th>Qtd.</th>
                         <th>Preço</th>
+                        <th>Subtotal</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody id="carrinho"></tbody>
             </table>
         </div>
+
+        <p id="carrinhoVazio" class="muted">Nenhum produto adicionado.</p>
 
         <h3 class="text-right">Total: <span id="valorTotal">R$ 0,00</span></h3>
 
@@ -93,72 +214,151 @@ function numero(valor) {
     return Number(String(valor).replace(',', '.'));
 }
 
+function dinheiro(valor) {
+    return 'R$ ' + Number(valor).toFixed(2).replace('.', ',');
+}
+
 function adicionarProduto(id, nome, preco, estoque) {
-    const existente = carrinho.find(item => item.produto_id == id);
+    const produtoId = Number(id);
+    const limite = Number(estoque);
+    const existente = carrinho.find(item => item.produto_id === produtoId);
+
     if (existente) {
-        if (existente.quantidade < estoque) existente.quantidade++;
+        if (existente.quantidade < limite) {
+            existente.quantidade++;
+        }
     } else {
         carrinho.push({
-            produto_id: Number(id),
+            produto_id: produtoId,
             nome,
             preco_unitario: numero(preco),
             quantidade: 1,
-            estoque: Number(estoque)
+            estoque: limite
         });
     }
+
     atualizarCarrinho();
 }
 
-function alterarQuantidade(id, valor) {
-    const item = carrinho.find(item => item.produto_id == id);
+function mudarQuantidade(id, delta) {
+    const item = carrinho.find(item => item.produto_id === Number(id));
     if (!item) return;
-    const qtd = Math.max(1, Math.min(Number(valor) || 1, item.estoque));
-    item.quantidade = qtd;
+
+    const novaQuantidade = item.quantidade + delta;
+    if (novaQuantidade < 1) {
+        removerItem(id);
+        return;
+    }
+
+    item.quantidade = Math.min(novaQuantidade, item.estoque);
     atualizarCarrinho();
 }
 
 function alterarPreco(id, valor) {
-    const item = carrinho.find(item => item.produto_id == id);
+    const item = carrinho.find(item => item.produto_id === Number(id));
     if (!item) return;
     item.preco_unitario = Math.max(0, numero(valor) || 0);
     atualizarCarrinho();
 }
 
 function removerItem(id) {
-    carrinho = carrinho.filter(item => item.produto_id != id);
+    carrinho = carrinho.filter(item => item.produto_id !== Number(id));
     atualizarCarrinho();
 }
 
 function atualizarCarrinho() {
     const corpo = document.getElementById('carrinho');
+    const vazio = document.getElementById('carrinhoVazio');
     corpo.innerHTML = '';
+
     let total = 0;
 
     carrinho.forEach(item => {
-        total += item.preco_unitario * item.quantidade;
+        const subtotal = item.preco_unitario * item.quantidade;
+        total += subtotal;
+
         corpo.insertAdjacentHTML('beforeend', `
             <tr>
-                <td>${item.nome}</td>
-                <td style="min-width:72px;">
-                    <input type="number" min="1" max="${item.estoque}" value="${item.quantidade}"
-                           onchange="alterarQuantidade(${item.produto_id}, this.value)">
+                <td><strong>${item.nome}</strong></td>
+                <td>
+                    <div class="quantidade-controle">
+                        <button type="button" aria-label="Diminuir quantidade" onclick="mudarQuantidade(${item.produto_id}, -1)">−</button>
+                        <span>${item.quantidade}</span>
+                        <button type="button" aria-label="Aumentar quantidade" onclick="mudarQuantidade(${item.produto_id}, 1)">+</button>
+                    </div>
                 </td>
-                <td style="min-width:105px;">
-                    <input type="number" min="0" step="0.01" value="${item.preco_unitario.toFixed(2)}"
+                <td>
+                    <input class="preco-venda"
+                           type="number"
+                           min="0"
+                           step="0.01"
+                           value="${item.preco_unitario.toFixed(2)}"
                            onchange="alterarPreco(${item.produto_id}, this.value)">
                 </td>
-                <td><button class="btn btn-danger btn-sm" type="button" onclick="removerItem(${item.produto_id})">×</button></td>
+                <td class="money">${dinheiro(subtotal)}</td>
+                <td>
+                    <button class="btn btn-danger btn-sm" type="button" onclick="removerItem(${item.produto_id})">Remover</button>
+                </td>
             </tr>
         `);
     });
 
-    document.getElementById('valorTotal').innerText =
-        'R$ ' + total.toFixed(2).replace('.', ',');
+    vazio.style.display = carrinho.length ? 'none' : 'block';
+    document.getElementById('valorTotal').innerText = dinheiro(total);
 }
 
 function alternarCliente() {
     const fiado = document.getElementById('formaPagamento').value === 'FIADO';
     document.getElementById('clienteBox').style.display = fiado ? 'block' : 'none';
+
+    if (!fiado) {
+        limparCliente();
+    }
+}
+
+function normalizar(texto) {
+    return String(texto || '').toLowerCase().trim();
+}
+
+function filtrarClientes() {
+    const busca = normalizar(document.getElementById('buscaCliente').value);
+    const resultados = document.getElementById('clienteResultados');
+    const opcoes = Array.from(document.querySelectorAll('.cliente-opcao'));
+
+    let visiveis = 0;
+
+    opcoes.forEach(opcao => {
+        const corresponde =
+            !busca ||
+            opcao.dataset.nome.includes(busca) ||
+            opcao.dataset.celular.includes(busca);
+
+        opcao.style.display = corresponde && visiveis < 8 ? 'block' : 'none';
+        if (corresponde) visiveis++;
+    });
+
+    resultados.style.display = visiveis ? 'block' : 'none';
+
+    document.getElementById('clienteId').value = '';
+    document.getElementById('clienteSelecionado').style.display = 'none';
+}
+
+function selecionarCliente(botao) {
+    document.getElementById('clienteId').value = botao.dataset.id;
+    document.getElementById('buscaCliente').value = botao.dataset.label;
+
+    const selecionado = document.getElementById('clienteSelecionado');
+    selecionado.innerText = 'Cliente selecionado: ' + botao.dataset.label;
+    selecionado.style.display = 'block';
+
+    document.getElementById('clienteResultados').style.display = 'none';
+}
+
+function limparCliente() {
+    document.getElementById('clienteId').value = '';
+    document.getElementById('buscaCliente').value = '';
+    document.getElementById('clienteSelecionado').style.display = 'none';
+    document.getElementById('clienteResultados').style.display = 'none';
 }
 
 function csrfToken() {
@@ -171,7 +371,7 @@ async function finalizarVenda() {
     erro.style.display = 'none';
 
     const forma = document.getElementById('formaPagamento').value;
-    const clienteId = document.getElementById('cliente').value || null;
+    const clienteId = document.getElementById('clienteId').value || null;
 
     if (!carrinho.length) {
         erro.innerText = 'Adicione pelo menos um produto.';
@@ -180,7 +380,7 @@ async function finalizarVenda() {
     }
 
     if (forma === 'FIADO' && !clienteId) {
-        erro.innerText = 'Selecione o cliente da venda fiada.';
+        erro.innerText = 'Pesquise e selecione o cliente da venda fiada.';
         erro.style.display = 'block';
         return;
     }
@@ -209,8 +409,7 @@ async function finalizarVenda() {
         const dados = await resposta.json();
         if (!resposta.ok) throw new Error(dados.erro || 'Não foi possível finalizar a venda.');
 
-        alert('Venda #' + dados.venda_id + ' finalizada. Total: R$ ' + dados.total.replace('.', ','));
-        window.location.reload();
+        window.location.href = "{% url 'vendas:detalhe' 0 %}".replace('/0/', '/' + dados.venda_id + '/');
     } catch (e) {
         erro.innerText = e.message;
         erro.style.display = 'block';
@@ -220,10 +419,17 @@ async function finalizarVenda() {
 }
 
 document.getElementById('buscaProduto').addEventListener('input', function () {
-    const termo = this.value.toLowerCase().trim();
-    document.querySelectorAll('.produto').forEach(card => {
+    const termo = normalizar(this.value);
+    document.querySelectorAll('.produto-card').forEach(card => {
         card.style.display = card.dataset.nome.includes(termo) ? 'block' : 'none';
     });
+});
+
+document.addEventListener('click', function (event) {
+    const area = document.querySelector('.cliente-search-wrap');
+    if (area && !area.contains(event.target)) {
+        document.getElementById('clienteResultados').style.display = 'none';
+    }
 });
 </script>
 {% endblock %}

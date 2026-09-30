@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Histórico de Vendas{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Histórico de vendas</h1>
+            <p class="subtitle">Consulte vendas em dinheiro, Pix, cartão e fiado.</p>
+        </div>
+        <div class="actions no-print">
+            <a href="{% url 'vendas:home' %}" class="btn btn-success">Nova venda</a>
+        </div>
+    </div>
+
+    <form method="get" class="grid grid-3 no-print" style="align-items:end; margin-bottom:1.5rem;">
+        <div>
+            <label for="q">Buscar</label>
+            <input id="q" name="q" value="{{ query }}" placeholder="Nº da venda, cliente ou celular">
+        </div>
+        <div>
+            <label for="forma_pagamento">Forma de pagamento</label>
+            <select id="forma_pagamento" name="forma_pagamento">
+                <option value="">Todas</option>
+                {% for codigo, nome in formas_pagamento %}
+                <option value="{{ codigo }}" {% if forma_selecionada == codigo %}selected{% endif %}>{{ nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="actions">
+            <button class="btn btn-primary" type="submit">Filtrar</button>
+            <a href="{% url 'vendas:historico' %}" class="btn btn-light">Limpar</a>
+        </div>
+    </form>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>VENDA</th>
+                    <th>DATA</th>
+                    <th>CLIENTE</th>
+                    <th>PAGAMENTO</th>
+                    <th>VALOR</th>
+                    <th class="text-center">DETALHES</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for venda in vendas %}
+                <tr>
+                    <td><strong>#{{ venda.id }}</strong></td>
+                    <td>{{ venda.criada_em|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        {% if venda.cliente %}
+                            {{ venda.cliente.nome }}<br>
+                            <small class="muted">{{ venda.cliente.celular }}</small>
+                        {% else %}
+                            <span class="muted">Venda balcão</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ venda.get_forma_pagamento_display }}</td>
+                    <td class="money">R$ {{ venda.total|floatformat:2 }}</td>
+                    <td class="text-center">
+                        <a href="{% url 'vendas:detalhe' venda.id %}" class="btn btn-primary btn-sm">Visualizar</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6">Nenhuma venda encontrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,109 +1,56 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buscar Produto</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; color: #333; margin: 0; padding: 0; }
-        .navbar { background-color: #212529; padding: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 2rem; }
-        .navbar-brand { color: #fff; text-decoration: none; font-weight: bold; font-size: 1.25rem; }
-        .container { max-width: 1100px; margin: 0 auto; padding: 0 15px; }
-        .card { background: #fff; border-radius: 0.375rem; box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075); padding: 1.5rem; border: 0; margin-top: 1rem; }
-        .mb-4 { margin-bottom: 1.5rem; }
-        .h3 { font-size: 1.75rem; margin: 0; color: #495057; }
-        .form-label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: #6c757d; }
-        .form-control { display: block; width: 100%; padding: 0.375rem 0.75rem; font-size: 1rem; color: #212529; background-color: #fff; border: 1px solid #ced4da; border-radius: 0.375rem; box-sizing: border-box; height: 38px; }
-        .btn { display: inline-block; font-weight: 400; text-align: center; vertical-align: middle; cursor: pointer; border: 1px solid transparent; padding: 0.375rem 0.75rem; font-size: 1rem; border-radius: 0.25rem; text-decoration: none; box-sizing: border-box; height: 38px; line-height: 1.5; }
-        .btn-primary { color: #fff; background-color: #0d6efd; border-color: #0d6efd; width: 100%; }
-        .btn-light { color: #212529; background-color: #f8f9fa; border: 1px solid #ced4da; height: 38px; }
-        .row { display: flex; flex-wrap: wrap; margin-right: -15px; margin-left: -15px; align-items: flex-end; }
-        .col-md-8 { flex: 0 0 66.666667%; max-width: 66.666667%; padding: 0 15px; box-sizing: border-box; }
-        .col-md-4 { flex: 0 0 33.333333%; max-width: 33.333333%; padding: 0 15px; box-sizing: border-box; }
-        
-        .table { width: 100%; margin-top: 1.5rem; border-color: #dee2e6; border-collapse: collapse; vertical-align: middle; }
-        .table th { background-color: #212529; color: #fff; padding: 0.75rem; text-align: left; }
-        .table td { padding: 0.75rem; border-bottom: 1px solid #dee2e6; color: #212529; }
-        
-        .table th.text-center, 
-        .table td.text-center { 
-            text-align: center !important; 
-        }
-        
-        .table .btn-sm { 
-            display: inline-block;
-            padding: 0.25rem 0.75rem; 
-            font-size: 0.875rem; 
-            border-radius: 0.2rem; 
-            text-decoration: none;
-            min-width: 80px;
-            height: auto;
-        }
-        .btn-danger { color: #fff; background-color: #dc3545; border-color: #dc3545; }
-        .btn-warning { color: #000; background-color: #ffc107; border-color: #ffc107; }
-        
-        .alert-warning { color: #664d03; background-color: #fff3cd; border: 1px solid #ffecb5; padding: 1rem; border-radius: 0.375rem; margin-top: 1rem; }
-        .mt-3 { margin-top: 1rem; }
-        .text-muted { color: #6c757d; text-decoration: none; }
-    </style>
-</head>
-<body>
-    <nav class="navbar">
-        <div class="container">
-            <a class="navbar-brand" href="{% url 'produtos:produtos_home' %}">⚙️ Dashboard Produtos</a>
-        </div>
-    </nav>
-    <div class="container">
-        <div class="card">
-            <h1 class="h3 mb-4">Busca de Produtos</h1>
-            
-            <form action="{% url 'produtos:produtos_buscar' %}" method="get">
-                <div class="row">
-                    <div class="col-md-8">
-                        <label for="nome" class="form-label">Nome do Produto:</label>
-                        <input type="text" id="nome" name="nome" class="form-control" placeholder="Digite o nome do produto..." value="{{ query|default:'' }}" required>
-                    </div>
-                    <div class="col-md-4">
-                        <button type="submit" class="btn btn-primary">Pesquisar</button>
-                    </div>
-                </div>
-            </form>
+{% extends 'base.html' %}
 
-            {% if produtos %}
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>PRODUTO</th>
-                            <th>PREÇO</th>
-                            <th class="text-center" style="width: 15%;">REMOVER</th>
-                            <th class="text-center" style="width: 15%;">EDITAR</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for produto in produtos %}
-                        <tr>
-                            <td style="font-weight: 600;">{{ produto.nome }}</td>
-                            <td>{{ produto.preco }}</td>
-                            <td class="text-center">
-                                <a href="{% url 'produtos:produtos_remover' id=produto.id %}" class="btn btn-sm btn-danger">Remover</a>
-                            </td>
-                            <td class="text-center">
-                                <a href="{% url 'produtos:produtos_editar' id=produto.id %}" class="btn btn-sm btn-warning">Editar</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            {% else %}
-                {% if query %}
-                    <div class="alert-warning">Nenhum produto encontrado.</div>
-                {% endif %}
-            {% endif %}
-            
-            <div class="mt-3">
-                <a href="{% url 'produtos:produtos_home' %}" class="text-muted">← Voltar para Home</a>
-            </div>
+{% block title %}Buscar Produto{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Buscar produto</h1>
+            <p class="subtitle">Pesquise pelo nome do produto.</p>
+        </div>
+        <div class="actions">
+            <a href="{% url 'produtos:produtos_adicionar' %}" class="btn btn-success">Adicionar produto</a>
         </div>
     </div>
-</body>
-</html>
+
+    <form method="get" style="display:flex; gap:.75rem; align-items:end; flex-wrap:wrap;">
+        <div style="flex:1; min-width:240px;">
+            <label for="nome">Nome do produto</label>
+            <input id="nome" name="nome" value="{{ query }}" placeholder="Digite o nome..." required>
+        </div>
+        <button type="submit" class="btn btn-primary">Pesquisar</button>
+    </form>
+
+    {% if query %}
+    <div class="table-wrap" style="margin-top:1.5rem;">
+        <table>
+            <thead>
+                <tr>
+                    <th>PRODUTO</th>
+                    <th>PREÇO</th>
+                    <th>ESTOQUE</th>
+                    <th class="text-center">EDITAR</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for produto in produtos %}
+                <tr>
+                    <td><strong>{{ produto.nome }}</strong></td>
+                    <td class="money">R$ {{ produto.preco|floatformat:2 }}</td>
+                    <td>{{ produto.quantidade }}</td>
+                    <td class="text-center">
+                        <a href="{% url 'produtos:produtos_editar' produto.id %}" class="btn btn-warning btn-sm">Editar</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4">Nenhum produto encontrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <a href="{% url 'produtos:produtos_home' %}" class="back">← Voltar aos produtos</a>
+</div>
+{% endblock %}
