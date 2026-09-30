@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Fiado{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Fiado — em aberto</h1>
+            <p class="subtitle">Clientes que possuem compras pendentes.</p>
+        </div>
+        <div class="actions no-print">
+            <a href="{% url 'fiado:configurar_senha' %}" class="btn btn-dark">
+                {% if senha_configurada %}Alterar senha de quitação{% else %}Cadastrar senha de quitação{% endif %}
+            </a>
+        </div>
+    </div>
+
+    {% if not senha_configurada %}
+    <div class="alert alert-warning">
+        Nenhuma senha de quitação foi cadastrada. Cadastre uma senha antes de marcar compras como pagas.
+    </div>
+    {% endif %}
+
+    <form method="get" class="no-print" style="display:flex; gap:.75rem; margin-bottom:1.5rem;">
+        <input name="q" value="{{ query }}" placeholder="Buscar cliente por nome ou celular">
+        <button class="btn btn-primary" type="submit">Pesquisar</button>
+    </form>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>CLIENTE</th>
+                    <th>CELULAR</th>
+                    <th>VENDA</th>
+                    <th>DATA</th>
+                    <th>VALOR</th>
+                    <th class="text-center">PEDIDO</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fiado in fiados %}
+                <tr>
+                    <td><strong>{{ fiado.venda.cliente.nome }}</strong></td>
+                    <td>{{ fiado.venda.cliente.celular }}</td>
+                    <td>#{{ fiado.venda.id }}</td>
+                    <td>{{ fiado.venda.criada_em|date:"d/m/Y H:i" }}</td>
+                    <td class="money money-open">R$ {{ fiado.venda.total|floatformat:2 }}</td>
+                    <td class="text-center"><a href="{% url 'fiado:detalhe' fiado.id %}" class="btn btn-primary btn-sm">Visualizar</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6">Nenhum fiado em aberto.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

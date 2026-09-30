@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block title %}Remover Cliente{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:700px; margin:0 auto; border-left:5px solid #dc3545;">
+    <h1 class="page-title" style="color:#dc3545;">Remover cliente</h1>
+    <p>Tem certeza que deseja remover <strong>{{ cliente.nome }}</strong>?</p>
+    <p class="muted">Clientes com vendas registradas não podem ser removidos para preservar o histórico.</p>
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-actions">
+            <a href="{% url 'clientes:home' %}" class="btn btn-light">Cancelar</a>
+            <button type="submit" class="btn btn-danger">Remover cliente</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
