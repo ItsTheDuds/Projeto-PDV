@@ -1,7 +1,6 @@
 import json
 from decimal import Decimal, InvalidOperation
 
-from django.contrib import messages
 from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
@@ -44,7 +43,10 @@ def finalizar(request):
 
     cliente = None
     if cliente_id:
-        cliente = get_object_or_404(Cliente, id=cliente_id)
+        try:
+            cliente = Cliente.objects.get(id=cliente_id)
+        except Cliente.DoesNotExist:
+            return JsonResponse({'erro': 'Cliente não encontrado.'}, status=400)
 
     if forma_pagamento == Venda.FIADO and cliente is None:
         return JsonResponse(
