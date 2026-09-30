@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Pedido Fiado{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Pedido #{{ fiado.venda.id }}</h1>
+            <p class="subtitle">{{ fiado.venda.cliente.nome }} — {{ fiado.venda.cliente.celular }}</p>
+        </div>
+        <div>
+            {% if fiado.pago %}
+                <span class="badge badge-paid">PAGO</span>
+            {% else %}
+                <span class="badge badge-open">EM ABERTO</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <p><strong>Data:</strong> {{ fiado.venda.criada_em|date:"d/m/Y H:i" }}</p>
+
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>PRODUTO</th><th>QTD.</th><th>PREÇO</th><th>SUBTOTAL</th></tr></thead>
+            <tbody>
+                {% for item in fiado.venda.itens.all %}
+                <tr>
+                    <td>{{ item.produto.nome }}</td>
+                    <td>{{ item.quantidade }}</td>
+                    <td>R$ {{ item.preco_unitario|floatformat:2 }}</td>
+                    <td class="money">R$ {{ item.subtotal|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <h2 class="text-right">Total: R$ {{ fiado.venda.total|floatformat:2 }}</h2>
+
+    <div class="actions no-print" style="justify-content:flex-end;">
+        <button type="button" class="btn btn-outline" onclick="window.print()">Imprimir</button>
+
+        {% if not fiado.pago %}
+            {% if senha_configurada %}
+            <form method="post" action="{% url 'fiado:marcar_pago' fiado.id %}" style="display:flex; gap:.5rem; align-items:center;">
+                {% csrf_token %}
+                <input type="password" name="senha" placeholder="Senha de quitação" required style="width:190px;">
+                <button type="submit" class="btn btn-success">Marcar como PAGO</button>
+            </form>
+            {% else %}
+            <a href="{% url 'fiado:configurar_senha' %}" class="btn btn-warning">Cadastrar senha para quitar</a>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <a href="{% url 'fiado:home' %}" class="back no-print">← Voltar ao Fiado</a>
+</div>
+{% endblock %}

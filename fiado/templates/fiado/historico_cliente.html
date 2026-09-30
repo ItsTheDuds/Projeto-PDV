@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}Histórico de Fiado{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Histórico de {{ cliente.nome }}</h1>
+            <p class="subtitle">{{ cliente.celular }}{% if cliente.email %} — {{ cliente.email }}{% endif %}</p>
+        </div>
+        <div>
+            <div class="muted">Saldo atual</div>
+            <div class="money {% if saldo > 0 %}money-open{% else %}money-ok{% endif %}" style="font-size:1.5rem;">
+                R$ {{ saldo|floatformat:2 }}
+            </div>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>VENDA</th><th>DATA</th><th>VALOR</th><th>STATUS</th><th class="text-center">PEDIDO</th></tr></thead>
+            <tbody>
+                {% for fiado in fiados %}
+                <tr>
+                    <td>#{{ fiado.venda.id }}</td>
+                    <td>{{ fiado.venda.criada_em|date:"d/m/Y H:i" }}</td>
+                    <td class="money">R$ {{ fiado.venda.total|floatformat:2 }}</td>
+                    <td>
+                        {% if fiado.pago %}
+                            <span class="badge badge-paid">Pago</span>
+                        {% else %}
+                            <span class="badge badge-open">Em aberto</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center"><a href="{% url 'fiado:detalhe' fiado.id %}" class="btn btn-primary btn-sm">Visualizar</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5">Este cliente ainda não possui compras fiadas.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <a href="{% url 'clientes:home' %}" class="back">← Voltar aos Clientes</a>
+</div>
+{% endblock %}

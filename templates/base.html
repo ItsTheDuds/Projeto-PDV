@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}FiadoFácil{% endblock %}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8f9fa; color: #212529; margin: 0; }
+        .navbar { background: #212529; padding: 1rem; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
+        .navbar .container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+        .navbar-brand { color: #fff; text-decoration: none; font-weight: 700; font-size: 1.25rem; }
+        .container { width: min(1180px, calc(100% - 30px)); margin: 0 auto; }
+        .card { background: #fff; border-radius: .5rem; box-shadow: 0 .125rem .35rem rgba(0,0,0,.08); padding: 1.5rem; border: 1px solid #e9ecef; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .page-title { font-size: 1.75rem; color: #343a40; margin: 0; }
+        .subtitle { color: #6c757d; margin: .35rem 0 0; }
+        .actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+        .btn { display: inline-block; padding: .55rem .9rem; border-radius: .35rem; text-decoration: none; border: 1px solid transparent; cursor: pointer; font-size: .95rem; line-height: 1.2; }
+        .btn-primary { background: #0d6efd; color: #fff; }
+        .btn-success { background: #198754; color: #fff; }
+        .btn-warning { background: #ffc107; color: #111; }
+        .btn-danger { background: #dc3545; color: #fff; }
+        .btn-dark { background: #212529; color: #fff; }
+        .btn-light { background: #f8f9fa; color: #212529; border-color: #ced4da; }
+        .btn-outline { background: #fff; color: #6c757d; border-color: #6c757d; }
+        .btn-sm { padding: .35rem .6rem; font-size: .86rem; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #212529; color: #fff; text-align: left; padding: .75rem; white-space: nowrap; }
+        td { padding: .75rem; border-bottom: 1px solid #dee2e6; vertical-align: middle; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .muted { color: #6c757d; }
+        .money { font-weight: 700; white-space: nowrap; }
+        .money-open { color: #dc3545; }
+        .money-ok { color: #198754; }
+        label { display: block; margin-bottom: .4rem; font-weight: 600; color: #495057; }
+        input, select, textarea { width: 100%; padding: .6rem .75rem; border: 1px solid #ced4da; border-radius: .375rem; font-size: 1rem; background: #fff; }
+        form p { margin: 0 0 1rem; }
+        .form-actions { display: flex; justify-content: flex-end; gap: .5rem; padding-top: 1rem; margin-top: 1rem; border-top: 1px solid #dee2e6; flex-wrap: wrap; }
+        .alert { padding: .85rem 1rem; border-radius: .375rem; margin-bottom: 1rem; }
+        .alert-success { background: #d1e7dd; color: #0f5132; }
+        .alert-error { background: #f8d7da; color: #842029; }
+        .alert-warning { background: #fff3cd; color: #664d03; }
+        .badge { display: inline-block; padding: .3rem .55rem; border-radius: 999px; font-size: .8rem; font-weight: 700; }
+        .badge-open { background: #f8d7da; color: #842029; }
+        .badge-paid { background: #d1e7dd; color: #0f5132; }
+        .back { display: inline-block; margin-top: 1rem; color: #6c757d; text-decoration: none; }
+        .grid { display: grid; gap: 1rem; }
+        .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        @media (max-width: 800px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+        @media print {
+            .navbar, .no-print, .messages { display: none !important; }
+            body { background: #fff; }
+            .card { box-shadow: none; border: none; padding: 0; }
+            .container { width: 100%; }
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+<nav class="navbar no-print">
+    <div class="container">
+        <a class="navbar-brand" href="{% url 'home' %}">💵 FiadoFácil</a>
+    </div>
+</nav>
+<main class="container">
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+            <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'warning' %}alert-warning{% else %}alert-success{% endif %}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+</main>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

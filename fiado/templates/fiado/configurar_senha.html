@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}Senha do Fiado{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:650px; margin:0 auto;">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Senha para quitar fiado</h1>
+            <p class="subtitle">
+                {% if senha_configurada %}
+                    Altere a senha usada para confirmar que uma dívida foi paga.
+                {% else %}
+                    Cadastre a senha que será solicitada ao marcar uma dívida como paga.
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+
+        {% if senha_configurada %}
+        <p>
+            <label for="senha_atual">Senha atual</label>
+            <input id="senha_atual" name="senha_atual" type="password" required autocomplete="current-password">
+        </p>
+        {% endif %}
+
+        <p>
+            <label for="nova_senha">Nova senha</label>
+            <input id="nova_senha" name="nova_senha" type="password" minlength="4" required autocomplete="new-password">
+        </p>
+
+        <p>
+            <label for="confirmar_senha">Confirmar nova senha</label>
+            <input id="confirmar_senha" name="confirmar_senha" type="password" minlength="4" required autocomplete="new-password">
+        </p>
+
+        <div class="form-actions">
+            <a href="{% url 'fiado:home' %}" class="btn btn-light">Cancelar</a>
+            <button type="submit" class="btn btn-success">
+                {% if senha_configurada %}Alterar senha{% else %}Cadastrar senha{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

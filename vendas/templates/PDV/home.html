@@ -1,175 +1,229 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Adicionar Produto</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; color: #333; margin: 0; padding: 0; }
-        .navbar { background-color: #212529; padding: 1rem; margin-bottom: 2rem; }
-        .navbar-brand { color: #fff; text-decoration: none; font-weight: bold; font-size: 1.25rem; }
-        .container { max-width: 700px; margin: 0 auto; padding: 0 15px; }
-        .card { background: #fff; border-radius: 0.375rem; box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075); padding: 2rem; border: 0; margin-top: 1rem; }
-        .h3 { font-size: 1.75rem; margin-bottom: 1.5rem; color: #495057; }
-        .btn { display: inline-block; font-weight: 400; text-align: center; padding: 0.375rem 0.75rem; font-size: 1rem; border-radius: 0.25rem; text-decoration: none; cursor: pointer; }
-        .btn-success { color: #fff; background-color: #198754; border: none; }
-        .btn-light { color: #212529; background-color: #f8f9fa; border: 1px solid #ced4da; }
-        .d-flex { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem; border-top: 1px solid #dee2e6; padding-top: 1rem; }
-        /* Estilização para o formulário do Django */
-        p { margin-bottom: 1rem; }
-        label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: #495057; }
-        input[type="text"], input[type="number"], textarea, select { display: block; width: 100%; padding: 0.375rem 0.75rem; font-size: 1rem; color: #212529; background-color: #fff; border: 1px solid #ced4da; border-radius: 0.375rem; box-sizing: border-box; }
-        textarea { height: 100px; resize: vertical; }
-    </style>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
-</head>
-<body>
-    <nav class="navbar"><div class="container"><a class="navbar-brand" href="{% url 'vendas:Pinicial' %}">💵 FiadoFacil</a></div></nav>
-  <div class="container-fluid">
-    <div class="row">
+{% extends 'base.html' %}
 
-        <!-- PRODUTOS -->
-        <div class="col-md-8">
-            <h3>Produtos</h3>
+{% block title %}Gerar Venda{% endblock %}
 
-            <div class="row">
-                {% for itens in itens %}
-                <div class="col-md-4 mb-3">
-                    <div class="card produto-card"
-                         onclick="adicionarProduto(
-                            '{{ itens.id }}',
-                            '{{ itens.nome }}',
-                            '{{ itens.preco }}'
-                         )">
-
-                        <div class="card-body">
-                            <h5>{{ itens.nome }}</h5>
-
-                            <p>
-                                R$ {{ itens.preco }}
-                            </p>
-
-                            <small>
-                                Estoque: {{ itens.quantidade }}
-                            </small>
-                        </div>
-
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-
-        </div>
-
-        <!-- CARRINHO -->
-        <div class="col-md-4">
-
-            <h3>Carrinho</h3>
-
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Produto</th>
-                        <th>Qtd</th>
-                        <th>Total</th>
-                    </tr>
-                </thead>
-
-                <tbody id="carrinho">
-                </tbody>
-
-            </table>
-
-            <hr>
-
-            <h4 id="valorTotal">
-                Total: R$ 0,00
-            </h4>
-
-            <button
-                class="btn btn-success w-100"
-                onclick="finalizarVenda()">
-
-                Finalizar Venda
-
-            </button>
-
-        </div>
-
+{% block content %}
+<form style="display:none;">{% csrf_token %}</form>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Gerar venda</h1>
+        <p class="subtitle">O backend valida estoque, preço e total antes de gravar a venda.</p>
     </div>
 </div>
 
-<script>
+<div class="grid" style="grid-template-columns:minmax(0,2fr) minmax(320px,1fr); align-items:start;">
+    <div class="card">
+        <div class="page-header">
+            <div>
+                <h2 style="margin:0;">Produtos</h2>
+                <p class="subtitle">Clique em um produto para adicionar ao carrinho.</p>
+            </div>
+            <input id="buscaProduto" placeholder="Pesquisar produto..." style="max-width:300px;">
+        </div>
 
+        <div id="listaProdutos" class="grid grid-3">
+            {% for produto in produtos %}
+            <button type="button"
+                    class="card produto"
+                    data-nome="{{ produto.nome|lower }}"
+                    onclick="adicionarProduto('{{ produto.id }}', '{{ produto.nome|escapejs }}', '{{ produto.preco }}', '{{ produto.quantidade }}')"
+                    style="text-align:left; cursor:pointer;">
+                <strong>{{ produto.nome }}</strong>
+                <div class="money" style="margin:.5rem 0;">R$ {{ produto.preco }}</div>
+                <small class="muted">Estoque: {{ produto.quantidade }}</small>
+            </button>
+            {% empty %}
+            <p>Nenhum produto disponível em estoque.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 style="margin-top:0;">Carrinho</h2>
+
+        <div style="margin-bottom:1rem;">
+            <label for="formaPagamento">Forma de pagamento</label>
+            <select id="formaPagamento" onchange="alternarCliente()">
+                <option value="DINHEIRO">Dinheiro</option>
+                <option value="PIX">Pix</option>
+                <option value="CARTAO">Cartão</option>
+                <option value="FIADO">Fiado</option>
+            </select>
+        </div>
+
+        <div id="clienteBox" style="display:none; margin-bottom:1rem;">
+            <label for="cliente">Cliente</label>
+            <select id="cliente">
+                <option value="">Selecione...</option>
+                {% for cliente in clientes %}
+                <option value="{{ cliente.id }}">{{ cliente.nome }} — {{ cliente.celular }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th>Qtd.</th>
+                        <th>Preço</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="carrinho"></tbody>
+            </table>
+        </div>
+
+        <h3 class="text-right">Total: <span id="valorTotal">R$ 0,00</span></h3>
+
+        <button id="finalizarBtn" class="btn btn-success" style="width:100%;" onclick="finalizarVenda()">
+            Finalizar venda
+        </button>
+        <p id="erroVenda" class="alert alert-error" style="display:none; margin-top:1rem;"></p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
 let carrinho = [];
 
-function adicionarProduto(id, nome, preco){
-
-    preco = parseFloat(preco);
-
-    let item = carrinho.find(p => p.id == id);
-
-    if(item){
-
-        item.quantidade++;
-
-    }else{
-
-        carrinho.push({
-            id:id,
-            nome:nome,
-            preco:preco,
-            quantidade:1
-        });
-
-    }
-
-    atualizarCarrinho();
-
+function numero(valor) {
+    return Number(String(valor).replace(',', '.'));
 }
 
-function atualizarCarrinho(){
+function adicionarProduto(id, nome, preco, estoque) {
+    const existente = carrinho.find(item => item.produto_id == id);
+    if (existente) {
+        if (existente.quantidade < estoque) existente.quantidade++;
+    } else {
+        carrinho.push({
+            produto_id: Number(id),
+            nome,
+            preco_unitario: numero(preco),
+            quantidade: 1,
+            estoque: Number(estoque)
+        });
+    }
+    atualizarCarrinho();
+}
 
-    let tabela =
-        document.getElementById("carrinho");
+function alterarQuantidade(id, valor) {
+    const item = carrinho.find(item => item.produto_id == id);
+    if (!item) return;
+    const qtd = Math.max(1, Math.min(Number(valor) || 1, item.estoque));
+    item.quantidade = qtd;
+    atualizarCarrinho();
+}
 
-    tabela.innerHTML = "";
+function alterarPreco(id, valor) {
+    const item = carrinho.find(item => item.produto_id == id);
+    if (!item) return;
+    item.preco_unitario = Math.max(0, numero(valor) || 0);
+    atualizarCarrinho();
+}
 
+function removerItem(id) {
+    carrinho = carrinho.filter(item => item.produto_id != id);
+    atualizarCarrinho();
+}
+
+function atualizarCarrinho() {
+    const corpo = document.getElementById('carrinho');
+    corpo.innerHTML = '';
     let total = 0;
 
     carrinho.forEach(item => {
-
-        let subtotal =
-            item.preco * item.quantidade;
-
-        total += subtotal;
-
-        tabela.innerHTML += `
-        <tr>
-            <td>${item.nome}</td>
-            <td>${item.quantidade}</td>
-            <td>R$ ${subtotal.toFixed(2)}</td>
-        </tr>
-        `;
+        total += item.preco_unitario * item.quantidade;
+        corpo.insertAdjacentHTML('beforeend', `
+            <tr>
+                <td>${item.nome}</td>
+                <td style="min-width:72px;">
+                    <input type="number" min="1" max="${item.estoque}" value="${item.quantidade}"
+                           onchange="alterarQuantidade(${item.produto_id}, this.value)">
+                </td>
+                <td style="min-width:105px;">
+                    <input type="number" min="0" step="0.01" value="${item.preco_unitario.toFixed(2)}"
+                           onchange="alterarPreco(${item.produto_id}, this.value)">
+                </td>
+                <td><button class="btn btn-danger btn-sm" type="button" onclick="removerItem(${item.produto_id})">×</button></td>
+            </tr>
+        `);
     });
 
-    document.getElementById(
-        "valorTotal"
-    ).innerText =
-        "Total: R$ " + total.toFixed(2);
-
+    document.getElementById('valorTotal').innerText =
+        'R$ ' + total.toFixed(2).replace('.', ',');
 }
 
-function finalizarVenda(){
-
-    alert(
-        "Venda finalizada. Próximo passo é gravar no banco."
-    );
-
+function alternarCliente() {
+    const fiado = document.getElementById('formaPagamento').value === 'FIADO';
+    document.getElementById('clienteBox').style.display = fiado ? 'block' : 'none';
 }
 
+function csrfToken() {
+    const cookie = document.cookie.split('; ').find(row => row.startsWith('csrftoken='));
+    return cookie ? cookie.split('=')[1] : '';
+}
+
+async function finalizarVenda() {
+    const erro = document.getElementById('erroVenda');
+    erro.style.display = 'none';
+
+    const forma = document.getElementById('formaPagamento').value;
+    const clienteId = document.getElementById('cliente').value || null;
+
+    if (!carrinho.length) {
+        erro.innerText = 'Adicione pelo menos um produto.';
+        erro.style.display = 'block';
+        return;
+    }
+
+    if (forma === 'FIADO' && !clienteId) {
+        erro.innerText = 'Selecione o cliente da venda fiada.';
+        erro.style.display = 'block';
+        return;
+    }
+
+    const botao = document.getElementById('finalizarBtn');
+    botao.disabled = true;
+
+    try {
+        const resposta = await fetch("{% url 'vendas:finalizar' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken()
+            },
+            body: JSON.stringify({
+                cliente_id: clienteId,
+                forma_pagamento: forma,
+                itens: carrinho.map(item => ({
+                    produto_id: item.produto_id,
+                    quantidade: item.quantidade,
+                    preco_unitario: item.preco_unitario
+                }))
+            })
+        });
+
+        const dados = await resposta.json();
+        if (!resposta.ok) throw new Error(dados.erro || 'Não foi possível finalizar a venda.');
+
+        alert('Venda #' + dados.venda_id + ' finalizada. Total: R$ ' + dados.total.replace('.', ','));
+        window.location.reload();
+    } catch (e) {
+        erro.innerText = e.message;
+        erro.style.display = 'block';
+    } finally {
+        botao.disabled = false;
+    }
+}
+
+document.getElementById('buscaProduto').addEventListener('input', function () {
+    const termo = this.value.toLowerCase().trim();
+    document.querySelectorAll('.produto').forEach(card => {
+        card.style.display = card.dataset.nome.includes(termo) ? 'block' : 'none';
+    });
+});
 </script>
-</body>
-</html>
+{% endblock %}

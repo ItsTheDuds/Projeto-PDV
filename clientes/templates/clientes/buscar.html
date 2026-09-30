@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block title %}Buscar Cliente{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Buscar cliente</h1>
+            <p class="subtitle">Pesquise por nome, celular ou e-mail.</p>
+        </div>
+    </div>
+
+    <form method="get" style="display:flex; gap:.75rem; align-items:end; flex-wrap:wrap;">
+        <div style="flex:1; min-width:240px;">
+            <label for="q">Cliente</label>
+            <input id="q" name="q" value="{{ query }}" placeholder="Nome, celular ou e-mail" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Pesquisar</button>
+    </form>
+
+    {% if query %}
+    <div class="table-wrap" style="margin-top:1.5rem;">
+        <table>
+            <thead>
+                <tr>
+                    <th>CLIENTE</th>
+                    <th>CELULAR</th>
+                    <th>E-MAIL</th>
+                    <th>SALDO</th>
+                    <th class="text-center">FIADO</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cliente in clientes %}
+                <tr>
+                    <td><strong>{{ cliente.nome }}</strong></td>
+                    <td>{{ cliente.celular }}</td>
+                    <td>{{ cliente.email|default:"-" }}</td>
+                    <td class="money {% if cliente.saldo_devedor > 0 %}money-open{% else %}money-ok{% endif %}">
+                        R$ {{ cliente.saldo_devedor|floatformat:2 }}
+                    </td>
+                    <td class="text-center">
+                        <a href="{% url 'fiado:cliente_historico' cliente.id %}" class="btn btn-primary btn-sm">Abrir</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5">Nenhum cliente encontrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <a href="{% url 'clientes:home' %}" class="back">← Voltar</a>
+</div>
+{% endblock %}
