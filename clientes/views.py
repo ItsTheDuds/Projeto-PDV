@@ -1,3 +1,5 @@
+import re
+
 from django.contrib import messages
 from django.db.models import DecimalField, Q, Sum, Value
 from django.db.models.deletion import ProtectedError
@@ -70,12 +72,12 @@ def buscar(request):
     clientes = Cliente.objects.none()
 
     if query:
-        clientes = Cliente.objects.filter(
-            Q(nome__icontains=query)
-            | Q(celular__icontains=query)
-            | Q(email__icontains=query)
-        )
-        clientes = _com_saldo(clientes)
+        filtro = Q(nome__icontains=query) | Q(email__icontains=query)
+        celular_query = re.sub(r'\D', '', query)
+        if celular_query:
+            filtro |= Q(celular__icontains=celular_query)
+
+        clientes = _com_saldo(Cliente.objects.filter(filtro))
 
     return render(
         request,
