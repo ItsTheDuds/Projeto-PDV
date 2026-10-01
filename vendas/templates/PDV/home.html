@@ -249,6 +249,9 @@
                     class="card produto-card"
                     data-id="{{ produto.id }}"
                     data-nome="{{ produto.nome|lower }}"
+                    data-label="{{ produto.nome|escapejs }}"
+                    data-preco="{{ produto.preco }}"
+                    data-estoque="{{ produto.quantidade }}"
                     onclick="adicionarProduto('{{ produto.id }}', '{{ produto.nome|escapejs }}', '{{ produto.preco }}', '{{ produto.quantidade }}')">
                 <strong style="font-size:1.05rem;">{{ produto.nome }}</strong>
                 <div class="money" style="margin:.5rem 0;">R$ {{ produto.preco }}</div>
@@ -539,13 +542,40 @@ async function finalizarVenda() {
     }
 }
 
-document.getElementById('buscaProduto').addEventListener('input', function () {
+const buscaProduto = document.getElementById('buscaProduto');
+
+buscaProduto.addEventListener('input', function () {
     const termo = normalizar(this.value);
     document.querySelectorAll('.produto-card').forEach(card => {
         const correspondeNome = card.dataset.nome.includes(termo);
         const correspondeId = card.dataset.id.includes(termo);
         card.style.display = (correspondeNome || correspondeId) ? 'block' : 'none';
     });
+});
+
+buscaProduto.addEventListener('keydown', function (event) {
+    if (event.key !== 'Enter') return;
+
+    event.preventDefault();
+
+    const idDigitado = this.value.trim().replace(/^#/, '');
+    if (!/^\d+$/.test(idDigitado)) return;
+
+    const card = Array.from(document.querySelectorAll('.produto-card'))
+        .find(item => item.dataset.id === idDigitado);
+
+    if (!card) return;
+
+    adicionarProduto(
+        card.dataset.id,
+        card.dataset.label,
+        card.dataset.preco,
+        card.dataset.estoque
+    );
+
+    this.value = '';
+    this.dispatchEvent(new Event('input'));
+    this.focus();
 });
 
 document.addEventListener('click', function (event) {
