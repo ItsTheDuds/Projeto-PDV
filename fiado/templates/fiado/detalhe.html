@@ -7,7 +7,7 @@
     <div class="page-header">
         <div>
             <h1 class="page-title">Pedido #{{ fiado.venda.id }}</h1>
-            <p class="subtitle">{{ fiado.venda.cliente.nome }} — {{ fiado.venda.cliente.celular }}</p>
+            <p class="subtitle">{{ fiado.venda.cliente.nome }} — {{ fiado.venda.cliente.celular_formatado }}</p>
         </div>
         <div>
             {% if fiado.pago %}
