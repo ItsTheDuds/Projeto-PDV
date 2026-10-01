@@ -43,7 +43,7 @@
                 {% for fiado in fiados %}
                 <tr>
                     <td><strong>{{ fiado.venda.cliente.nome }}</strong></td>
-                    <td>{{ fiado.venda.cliente.celular }}</td>
+                    <td>{{ fiado.venda.cliente.celular_formatado }}</td>
                     <td>#{{ fiado.venda.id }}</td>
                     <td>{{ fiado.venda.criada_em|date:"d/m/Y H:i" }}</td>
                     <td class="money money-open">R$ {{ fiado.venda.total|floatformat:2 }}</td>
