@@ -50,3 +50,22 @@ class VendaTests(TestCase):
 
         self.produto.refresh_from_db()
         self.assertEqual(self.produto.quantidade, 8)
+
+
+    def test_forma_de_pagamento_nao_fiado_e_rejeitada(self):
+        response = self.client.post(
+            reverse('vendas:finalizar'),
+            data=json.dumps({
+                'cliente_id': self.cliente.id,
+                'forma_pagamento': 'PIX',
+                'itens': [{
+                    'produto_id': self.produto.id,
+                    'quantidade': 1,
+                    'preco_unitario': '10.00',
+                }],
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('Forma de pagamento inválida', response.json()['erro'])
