@@ -32,7 +32,7 @@
                 {% for cliente in clientes %}
                 <tr>
                     <td><strong>{{ cliente.nome }}</strong></td>
-                    <td>{{ cliente.celular }}</td>
+                    <td>{{ cliente.celular_formatado }}</td>
                     <td>{{ cliente.email|default:"-" }}</td>
                     <td class="money {% if cliente.saldo_devedor > 0 %}money-open{% else %}money-ok{% endif %}">
                         R$ {{ cliente.saldo_devedor|floatformat:2 }}
