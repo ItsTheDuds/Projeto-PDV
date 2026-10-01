@@ -13,9 +13,6 @@ class Venda(models.Model):
     FIADO = 'FIADO'
 
     FORMAS_PAGAMENTO = [
-        (DINHEIRO, 'Dinheiro'),
-        (PIX, 'Pix'),
-        (CARTAO, 'Cartão'),
         (FIADO, 'Fiado'),
     ]
 
