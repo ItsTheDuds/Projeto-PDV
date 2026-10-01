@@ -1,6 +1,7 @@
 import json
 from decimal import Decimal
 
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
@@ -13,6 +14,12 @@ from .models import Venda
 
 class VendaTests(TestCase):
     def setUp(self):
+        self.usuario = get_user_model().objects.create_user(
+            username='operador',
+            password='senha-segura-123',
+        )
+        self.client.force_login(self.usuario)
+
         self.cliente = Cliente.objects.create(nome='João', celular='61999999999')
         self.produto = produtosModel.objects.create(
             nome='Produto',
