@@ -96,12 +96,44 @@ TEMPLATES = [
 WSGI_APPLICATION = "projeto.wsgi.application"
 
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+DB_ENGINE = os.getenv("DJANGO_DB_ENGINE", "sqlite").strip().lower()
+
+if DB_ENGINE in {"postgres", "postgresql"}:
+    required_db_vars = ["DB_NAME", "DB_USER", "DB_PASSWORD", "DB_HOST"]
+    missing_db_vars = [name for name in required_db_vars if not os.getenv(name)]
+
+    if missing_db_vars:
+        raise RuntimeError(
+            "Configuração PostgreSQL incompleta. Variáveis ausentes: "
+            + ", ".join(missing_db_vars)
+        )
+
+    database_options = {}
+    db_sslmode = os.getenv("DB_SSLMODE", "").strip()
+    if db_sslmode:
+        database_options["sslmode"] = db_sslmode
+
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.environ["DB_NAME"],
+            "USER": os.environ["DB_USER"],
+            "PASSWORD": os.environ["DB_PASSWORD"],
+            "HOST": os.environ["DB_HOST"],
+            "PORT": os.getenv("DB_PORT", "5432"),
+            # CGI cria um novo processo por requisição; conexão persistente
+            # não traz benefício neste tipo de deploy.
+            "CONN_MAX_AGE": 0,
+            "OPTIONS": database_options,
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 AUTH_PASSWORD_VALIDATORS = [
