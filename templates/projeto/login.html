@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Entrar | Águia Café{% endblock %}
+
+{% block extra_head %}
+<style>
+    body { min-height: 100vh; background: #f3f4f6; }
+    .login-shell {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 2rem 0;
+    }
+    .login-card {
+        width: min(430px, 100%);
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: .8rem;
+        box-shadow: 0 .7rem 2rem rgba(0,0,0,.08);
+        padding: 2rem;
+    }
+    .login-brand { text-align: center; margin-bottom: 1.8rem; }
+    .login-brand-icon { font-size: 2.8rem; line-height: 1; }
+    .login-brand h1 { margin: .7rem 0 .2rem; font-size: 1.8rem; }
+    .login-brand p { margin: 0; color: #6c757d; }
+    .login-field { margin-bottom: 1rem; }
+    .login-field input { padding: .75rem .85rem; }
+    .login-error {
+        margin-bottom: 1rem;
+        padding: .75rem .9rem;
+        border-radius: .4rem;
+        background: #f8d7da;
+        color: #842029;
+        font-size: .92rem;
+    }
+    .login-button {
+        width: 100%;
+        padding: .78rem 1rem;
+        border: 0;
+        border-radius: .4rem;
+        background: #212529;
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .login-button:hover { background: #343a40; }
+    .field-error { color: #842029; font-size: .86rem; margin-top: .35rem; }
+    .login-footer { text-align: center; margin: 1.2rem 0 0; color: #6c757d; font-size: .85rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-shell">
+    <section class="login-card">
+        <div class="login-brand">
+            <div class="login-brand-icon">☕</div>
+            <h1>Águia Café</h1>
+            <p>Acesse o FiadoFácil</p>
+        </div>
+
+        {% if form.non_field_errors %}
+            <div class="login-error">Usuário ou senha inválidos.</div>
+        {% endif %}
+
+        <form method="post" action="{% url 'login' %}">
+            {% csrf_token %}
+            {% if next %}
+                <input type="hidden" name="next" value="{{ next }}">
+            {% endif %}
+
+            <div class="login-field">
+                <label for="{{ form.username.id_for_label }}">Usuário</label>
+                {{ form.username }}
+                {% for error in form.username.errors %}
+                    <div class="field-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="login-field">
+                <label for="{{ form.password.id_for_label }}">Senha</label>
+                {{ form.password }}
+                {% for error in form.password.errors %}
+                    <div class="field-error">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <button type="submit" class="login-button">Entrar</button>
+        </form>
+
+        <p class="login-footer">Uso restrito a usuários autorizados.</p>
+    </section>
+</div>
+{% endblock %}
