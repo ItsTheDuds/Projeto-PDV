@@ -177,3 +177,10 @@ SECURE_HSTS_PRELOAD = False
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "home"
 LOGOUT_REDIRECT_URL = "login"
+
+
+# Caminho do Django Admin. Em produção, defina DJANGO_ADMIN_URL no ambiente.
+ADMIN_URL = os.getenv("DJANGO_ADMIN_URL", "admin").strip("/")
+if not ADMIN_URL:
+    ADMIN_URL = "admin"
+ADMIN_URL += "/"
