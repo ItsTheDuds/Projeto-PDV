@@ -126,7 +126,7 @@ USE_TZ = True
 
 
 STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = Path(os.getenv("DJANGO_STATIC_ROOT", BASE_DIR / "staticfiles"))
 
 
 SESSION_COOKIE_SECURE = not DEBUG
