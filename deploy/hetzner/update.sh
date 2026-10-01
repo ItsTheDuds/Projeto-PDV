@@ -1,10 +1,9 @@
 #!/bin/sh
 set -eu
 
-DOMAIN="${DOMAIN:-aguiacafe.com.br}"
 APP_DIR="${APP_DIR:-$HOME/djangoprojects/Projeto-PDV}"
 VENV_DIR="${VENV_DIR:-$HOME/virtualenvs/aguiacafe}"
-WEBROOT="${WEBROOT:-$HOME/public_html/$DOMAIN}"
+WEBROOT="${WEBROOT:-$HOME/public_html}"
 ENV_FILE="${ENV_FILE:-$HOME/.config/aguiacafe.env}"
 BRANCH="${BRANCH:-feature/clientes-fiado-vendas}"
 
@@ -31,7 +30,6 @@ echo "Atualizando arquivos estáticos..."
 echo "Validando Django..."
 "$VENV_DIR/bin/python" manage.py check
 
-# Alterar o mtime do script ajuda o FastCGI a perceber uma nova versão.
-touch "$WEBROOT/djangoapp.fcgi"
+touch "$WEBROOT/djangoapp.cgi"
 
 echo "Atualização concluída."
