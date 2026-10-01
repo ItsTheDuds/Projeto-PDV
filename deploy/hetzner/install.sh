@@ -4,7 +4,7 @@ set -eu
 DOMAIN="${DOMAIN:-aguiacafe.com.br}"
 APP_DIR="${APP_DIR:-$HOME/djangoprojects/Projeto-PDV}"
 VENV_DIR="${VENV_DIR:-$HOME/virtualenvs/aguiacafe}"
-WEBROOT="${WEBROOT:-$HOME/public_html/$DOMAIN}"
+WEBROOT="${WEBROOT:-$HOME/public_html}"
 ENV_FILE="${ENV_FILE:-$HOME/.config/aguiacafe.env}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 
@@ -15,7 +15,6 @@ echo "WEBROOT:  $WEBROOT"
 
 if [ ! -f "$APP_DIR/manage.py" ]; then
     echo "ERRO: manage.py não encontrado em $APP_DIR"
-    echo "Clone o Projeto-PDV nesse diretório antes de executar este script."
     exit 1
 fi
 
@@ -69,15 +68,16 @@ cat > "$WEBROOT/.htaccess" <<'EOF'
     RewriteEngine On
     RewriteBase /
     RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteRule ^(.*)$ djangoapp.fcgi/$1 [QSA,L]
+    RewriteRule ^(.*)$ djangoapp.cgi/$1 [QSA,L]
 </IfModule>
 EOF
 
-cat > "$WEBROOT/djangoapp.fcgi" <<EOF
+cat > "$WEBROOT/djangoapp.cgi" <<EOF
 #!$VENV_DIR/bin/python
 
 import os
 import sys
+import wsgiref.handlers
 
 APP_DIR = r"$APP_DIR"
 ENV_FILE = r"$ENV_FILE"
@@ -96,24 +96,22 @@ def load_env(path):
 load_env(ENV_FILE)
 sys.path.insert(0, APP_DIR)
 os.chdir(APP_DIR)
-
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "projeto.settings")
 
 import django
 from django.core.handlers.wsgi import WSGIHandler
-from flup.server.fcgi import WSGIServer
 
 django.setup(set_prefix=False)
-WSGIServer(WSGIHandler()).run()
+wsgiref.handlers.CGIHandler().run(WSGIHandler())
 EOF
 
-chmod 744 "$WEBROOT/djangoapp.fcgi"
+chmod 744 "$WEBROOT/djangoapp.cgi"
 chmod 644 "$WEBROOT/.htaccess"
 
 echo
 echo "Deploy preparado."
-echo "Agora configure no konsoleH o Document Root do domínio para:"
+echo "Raiz pública utilizada:"
 echo "  $WEBROOT"
 echo
-echo "Depois acesse:"
+echo "Acesse:"
 echo "  https://$DOMAIN"
