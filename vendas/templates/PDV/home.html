@@ -267,7 +267,7 @@
                             data-label="{{ cliente.nome|escapejs }} — {{ cliente.celular|escapejs }}"
                             onclick="selecionarCliente(this)">
                         <strong>{{ cliente.nome }}</strong><br>
-                        <small class="muted">{{ cliente.celular }}</small>
+                        <small class="muted">{{ cliente.celular_formatado }}</small>
                     </button>
                     {% endfor %}
                 </div>
