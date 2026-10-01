@@ -16,13 +16,37 @@
     .produto-lista {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-auto-rows: 120px;
         gap: 1rem;
+        max-height: 392px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: .35rem;
+        align-content: start;
+        scrollbar-gutter: stable;
+    }
+    .produto-lista::-webkit-scrollbar {
+        width: 10px;
+    }
+    .produto-lista::-webkit-scrollbar-track {
+        background: #f3e5d8;
+        border-radius: 999px;
+    }
+    .produto-lista::-webkit-scrollbar-thumb {
+        background: #c96a1b;
+        border-radius: 999px;
+        border: 2px solid #f3e5d8;
+    }
+    .produto-lista::-webkit-scrollbar-thumb:hover {
+        background: #a94f0e;
     }
     .produto-card {
         text-align: left;
         cursor: pointer;
         transition: transform .15s, border-color .15s, box-shadow .15s;
         min-width: 0;
+        height: 100%;
+        overflow: hidden;
     }
     .produto-card:hover {
         transform: translateY(-2px);
@@ -175,6 +199,8 @@
     @media (max-width: 800px) {
         .produto-lista {
             grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-auto-rows: 120px;
+            max-height: 392px;
         }
         .carrinho-item-dados {
             grid-template-columns: 1fr 1fr;
@@ -189,6 +215,8 @@
         }
         .produto-lista {
             grid-template-columns: 1fr;
+            grid-auto-rows: 120px;
+            max-height: 392px;
         }
         .carrinho-item-dados {
             grid-template-columns: 1fr;
