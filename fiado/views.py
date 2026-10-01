@@ -1,3 +1,5 @@
+import re
+
 from django.contrib import messages
 from django.db.models import DecimalField, Q, Sum, Value
 from django.db.models.functions import Coalesce
@@ -17,10 +19,11 @@ def home(request):
     )
 
     if query:
-        fiados = fiados.filter(
-            Q(venda__cliente__nome__icontains=query)
-            | Q(venda__cliente__celular__icontains=query)
-        )
+        filtro = Q(venda__cliente__nome__icontains=query)
+        celular_query = re.sub(r'\D', '', query)
+        if celular_query:
+            filtro |= Q(venda__cliente__celular__icontains=celular_query)
+        fiados = fiados.filter(filtro)
 
     configuracao = ConfiguracaoFiado.carregar()
     return render(
