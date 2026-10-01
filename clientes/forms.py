@@ -6,6 +6,19 @@ from .models import Cliente
 
 
 class ClienteForm(forms.ModelForm):
+    celular = forms.CharField(
+        label='Celular',
+        max_length=15,
+        widget=forms.TextInput(
+            attrs={
+                'placeholder': '(00) 00000-0000',
+                'inputmode': 'tel',
+                'autocomplete': 'tel',
+                'maxlength': '15',
+            }
+        ),
+    )
+
     class Meta:
         model = Cliente
         fields = ['nome', 'celular', 'email']
@@ -15,14 +28,6 @@ class ClienteForm(forms.ModelForm):
             'email': 'E-mail (opcional)',
         }
         widgets = {
-            'celular': forms.TextInput(
-                attrs={
-                    'placeholder': '(00) 00000-0000',
-                    'inputmode': 'tel',
-                    'autocomplete': 'tel',
-                    'maxlength': '15',
-                }
-            ),
             'email': forms.EmailInput(attrs={'placeholder': 'cliente@email.com'}),
         }
 
