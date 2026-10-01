@@ -10,7 +10,9 @@
             <p class="subtitle">{{ venda.criada_em|date:"d/m/Y H:i" }} — {{ venda.get_forma_pagamento_display }}</p>
         </div>
         <div class="actions no-print">
-            <button type="button" class="btn btn-outline" onclick="window.print()">Imprimir</button>
+            <a href="{% url 'vendas:comprovante' venda.id %}?auto=1"
+               target="_blank"
+               class="btn btn-outline">Imprimir 80 mm</a>
             <a href="{% url 'vendas:historico' %}" class="btn btn-dark">Histórico</a>
             <a href="{% url 'vendas:home' %}" class="btn btn-success">Nova venda</a>
         </div>

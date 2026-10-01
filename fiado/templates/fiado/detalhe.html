@@ -39,7 +39,9 @@
     <h2 class="text-right">Total: R$ {{ fiado.venda.total|floatformat:2 }}</h2>
 
     <div class="actions no-print" style="justify-content:flex-end;">
-        <button type="button" class="btn btn-outline" onclick="window.print()">Imprimir</button>
+        <a href="{% url 'vendas:comprovante' fiado.venda.id %}?auto=1"
+           target="_blank"
+           class="btn btn-outline">Imprimir 80 mm</a>
 
         {% if not fiado.pago %}
             {% if senha_configurada %}

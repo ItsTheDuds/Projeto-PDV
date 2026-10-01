@@ -4,9 +4,12 @@
 
 {% block extra_head %}
 <style>
+    main.container {
+        width: min(1460px, calc(100% - 24px));
+    }
     .venda-layout {
         display: grid;
-        grid-template-columns: minmax(0, 2fr) minmax(360px, 1fr);
+        grid-template-columns: minmax(0, 1.55fr) minmax(500px, .95fr);
         gap: 1rem;
         align-items: start;
     }
@@ -19,30 +22,56 @@
         text-align: left;
         cursor: pointer;
         transition: transform .15s, border-color .15s, box-shadow .15s;
+        min-width: 0;
     }
     .produto-card:hover {
         transform: translateY(-2px);
         border-color: #adb5bd;
         box-shadow: 0 .3rem .8rem rgba(0,0,0,.08);
     }
-    .carrinho-table {
-        min-width: 520px;
+    .painel-carrinho {
+        min-width: 0;
+    }
+    .carrinho-lista {
+        display: grid;
+        gap: .7rem;
+        margin: 1rem 0;
+    }
+    .carrinho-item {
+        border: 1px solid #dee2e6;
+        border-radius: .45rem;
+        padding: .75rem;
+        background: #fff;
+    }
+    .carrinho-item-topo {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: .75rem;
+        margin-bottom: .7rem;
+    }
+    .carrinho-item-dados {
+        display: grid;
+        grid-template-columns: minmax(120px, 1fr) minmax(105px, .7fr) minmax(105px, .7fr);
+        gap: .65rem;
+        align-items: end;
     }
     .quantidade-controle {
-        display: inline-grid;
-        grid-template-columns: 34px 42px 34px;
+        display: grid;
+        grid-template-columns: 40px minmax(42px, 1fr) 40px;
         align-items: center;
         border: 1px solid #ced4da;
         border-radius: .375rem;
         overflow: hidden;
         background: #fff;
+        min-height: 40px;
     }
     .quantidade-controle button {
         border: 0;
         background: #f1f3f5;
-        height: 34px;
+        height: 40px;
         cursor: pointer;
-        font-size: 1.1rem;
+        font-size: 1.15rem;
     }
     .quantidade-controle span {
         text-align: center;
@@ -50,8 +79,16 @@
         padding: 0 .25rem;
     }
     .preco-venda {
-        width: 105px;
-        min-width: 105px;
+        min-width: 0;
+    }
+    .subtotal-box {
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        padding: .55rem .65rem;
+        border-radius: .375rem;
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
     }
     .cliente-search-wrap {
         position: relative;
@@ -90,12 +127,54 @@
         color: #084298;
         display: none;
     }
-    @media (max-width: 980px) {
-        .venda-layout { grid-template-columns: 1fr; }
-        .produto-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .venda-confirmada {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        padding: .85rem 1rem;
+        margin-bottom: 1rem;
+        border: 1px solid #badbcc;
+        border-radius: .45rem;
+        background: #d1e7dd;
+        color: #0f5132;
     }
-    @media (max-width: 620px) {
-        .produto-lista { grid-template-columns: 1fr; }
+    .venda-confirmada .actions {
+        margin-left: auto;
+    }
+    @media (max-width: 1180px) {
+        .venda-layout {
+            grid-template-columns: 1fr;
+        }
+        .painel-carrinho {
+            max-width: none;
+        }
+    }
+    @media (max-width: 800px) {
+        .produto-lista {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .carrinho-item-dados {
+            grid-template-columns: 1fr 1fr;
+        }
+        .subtotal-area {
+            grid-column: 1 / -1;
+        }
+    }
+    @media (max-width: 560px) {
+        main.container {
+            width: min(100% - 16px, 1460px);
+        }
+        .produto-lista {
+            grid-template-columns: 1fr;
+        }
+        .carrinho-item-dados {
+            grid-template-columns: 1fr;
+        }
+        .subtotal-area {
+            grid-column: auto;
+        }
     }
 </style>
 {% endblock %}
@@ -103,10 +182,27 @@
 {% block content %}
 <form style="display:none;">{% csrf_token %}</form>
 
+{% if venda_finalizada %}
+<div class="venda-confirmada">
+    <div>
+        <strong>Venda #{{ venda_finalizada.id }} finalizada.</strong>
+        <span style="margin-left:.4rem;">Total: R$ {{ venda_finalizada.total|floatformat:2 }}</span>
+    </div>
+    <div class="actions">
+        <a href="{% url 'vendas:comprovante' venda_finalizada.id %}?auto=1"
+           target="_blank"
+           class="btn btn-light">Imprimir comprovante</a>
+        {% if venda_finalizada.forma_pagamento == 'FIADO' %}
+            <a href="{% url 'fiado:detalhe' venda_finalizada.fiado.id %}" class="btn btn-warning">Abrir fiado</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
 <div class="page-header">
     <div>
         <h1 class="page-title">Gerar venda</h1>
-        <p class="subtitle">Selecione os produtos e finalize a venda. Estoque e total são validados pelo sistema.</p>
+        <p class="subtitle">Selecione os produtos e finalize. A próxima venda fica pronta imediatamente.</p>
     </div>
     <div class="actions">
         <a href="{% url 'vendas:historico' %}" class="btn btn-dark">Histórico de vendas</a>
@@ -120,7 +216,7 @@
                 <h2 style="margin:0;">Produtos</h2>
                 <p class="subtitle">Clique para adicionar ao carrinho.</p>
             </div>
-            <input id="buscaProduto" placeholder="Pesquisar produto..." style="max-width:300px;">
+            <input id="buscaProduto" placeholder="Pesquisar produto..." style="max-width:320px;">
         </div>
 
         <div id="listaProdutos" class="produto-lista">
@@ -139,8 +235,8 @@
         </div>
     </div>
 
-    <div class="card">
-        <h2 style="margin-top:0;">Carrinho</h2>
+    <div class="card painel-carrinho">
+        <h2 style="margin-top:0;">Finalizar venda</h2>
 
         <div style="margin-bottom:1rem;">
             <label for="formaPagamento">Forma de pagamento</label>
@@ -179,28 +275,19 @@
             <div id="clienteSelecionado" class="cliente-selecionado"></div>
         </div>
 
-        <div class="table-wrap">
-            <table class="carrinho-table">
-                <thead>
-                    <tr>
-                        <th>Produto</th>
-                        <th>Qtd.</th>
-                        <th>Preço</th>
-                        <th>Subtotal</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody id="carrinho"></tbody>
-            </table>
-        </div>
-
+        <div id="carrinho" class="carrinho-lista"></div>
         <p id="carrinhoVazio" class="muted">Nenhum produto adicionado.</p>
 
-        <h3 class="text-right">Total: <span id="valorTotal">R$ 0,00</span></h3>
+        <div style="border-top:1px solid #dee2e6; padding-top:1rem; margin-top:1rem;">
+            <h2 class="text-right" style="margin:.2rem 0 1rem;">
+                Total: <span id="valorTotal">R$ 0,00</span>
+            </h2>
 
-        <button id="finalizarBtn" class="btn btn-success" style="width:100%;" onclick="finalizarVenda()">
-            Finalizar venda
-        </button>
+            <button id="finalizarBtn" class="btn btn-success" style="width:100%; min-height:48px;" onclick="finalizarVenda()">
+                Finalizar venda
+            </button>
+        </div>
+
         <p id="erroVenda" class="alert alert-error" style="display:none; margin-top:1rem;"></p>
     </div>
 </div>
@@ -278,28 +365,35 @@ function atualizarCarrinho() {
         total += subtotal;
 
         corpo.insertAdjacentHTML('beforeend', `
-            <tr>
-                <td><strong>${item.nome}</strong></td>
-                <td>
-                    <div class="quantidade-controle">
-                        <button type="button" aria-label="Diminuir quantidade" onclick="mudarQuantidade(${item.produto_id}, -1)">−</button>
-                        <span>${item.quantidade}</span>
-                        <button type="button" aria-label="Aumentar quantidade" onclick="mudarQuantidade(${item.produto_id}, 1)">+</button>
-                    </div>
-                </td>
-                <td>
-                    <input class="preco-venda"
-                           type="number"
-                           min="0"
-                           step="0.01"
-                           value="${item.preco_unitario.toFixed(2)}"
-                           onchange="alterarPreco(${item.produto_id}, this.value)">
-                </td>
-                <td class="money">${dinheiro(subtotal)}</td>
-                <td>
+            <div class="carrinho-item">
+                <div class="carrinho-item-topo">
+                    <strong>${item.nome}</strong>
                     <button class="btn btn-danger btn-sm" type="button" onclick="removerItem(${item.produto_id})">Remover</button>
-                </td>
-            </tr>
+                </div>
+                <div class="carrinho-item-dados">
+                    <div>
+                        <label>Quantidade</label>
+                        <div class="quantidade-controle">
+                            <button type="button" aria-label="Diminuir quantidade" onclick="mudarQuantidade(${item.produto_id}, -1)">−</button>
+                            <span>${item.quantidade}</span>
+                            <button type="button" aria-label="Aumentar quantidade" onclick="mudarQuantidade(${item.produto_id}, 1)">+</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label>Preço unitário</label>
+                        <input class="preco-venda"
+                               type="number"
+                               min="0"
+                               step="0.01"
+                               value="${item.preco_unitario.toFixed(2)}"
+                               onchange="alterarPreco(${item.produto_id}, this.value)">
+                    </div>
+                    <div class="subtotal-area">
+                        <label>Subtotal</label>
+                        <div class="subtotal-box money">${dinheiro(subtotal)}</div>
+                    </div>
+                </div>
+            </div>
         `);
     });
 
@@ -387,6 +481,7 @@ async function finalizarVenda() {
 
     const botao = document.getElementById('finalizarBtn');
     botao.disabled = true;
+    botao.innerText = 'Finalizando...';
 
     try {
         const resposta = await fetch("{% url 'vendas:finalizar' %}", {
@@ -409,12 +504,12 @@ async function finalizarVenda() {
         const dados = await resposta.json();
         if (!resposta.ok) throw new Error(dados.erro || 'Não foi possível finalizar a venda.');
 
-        window.location.href = "{% url 'vendas:detalhe' 0 %}".replace('/0/', '/' + dados.venda_id + '/');
+        window.location.href = "{% url 'vendas:home' %}?venda_finalizada=" + dados.venda_id;
     } catch (e) {
         erro.innerText = e.message;
         erro.style.display = 'block';
-    } finally {
         botao.disabled = false;
+        botao.innerText = 'Finalizar venda';
     }
 }
 
@@ -430,6 +525,10 @@ document.addEventListener('click', function (event) {
     if (area && !area.contains(event.target)) {
         document.getElementById('clienteResultados').style.display = 'none';
     }
+});
+
+window.addEventListener('load', function () {
+    document.getElementById('buscaProduto').focus();
 });
 </script>
 {% endblock %}

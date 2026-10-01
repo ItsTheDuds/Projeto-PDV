@@ -17,10 +17,25 @@ from .models import ItemVenda, Venda
 def home(request):
     produtos = produtosModel.objects.filter(quantidade__gt=0).order_by('nome')
     clientes = Cliente.objects.all().order_by('nome')
+
+    venda_finalizada = None
+    venda_id = request.GET.get('venda_finalizada', '').strip()
+    if venda_id.isdigit():
+        venda_finalizada = (
+            Venda.objects
+            .select_related('cliente')
+            .filter(id=int(venda_id))
+            .first()
+        )
+
     return render(
         request,
         'PDV/home.html',
-        {'produtos': produtos, 'clientes': clientes},
+        {
+            'produtos': produtos,
+            'clientes': clientes,
+            'venda_finalizada': venda_finalizada,
+        },
     )
 
 
@@ -66,6 +81,28 @@ def detalhe(request, id):
         request,
         'vendas/detalhe.html',
         {'venda': venda, 'fiado': fiado},
+    )
+
+
+def comprovante(request, id):
+    venda = get_object_or_404(
+        Venda.objects.select_related('cliente').prefetch_related('itens__produto'),
+        id=id,
+    )
+
+    fiado = None
+    if venda.forma_pagamento == Venda.FIADO:
+        fiado = getattr(venda, 'fiado', None)
+
+    return render(
+        request,
+        'vendas/comprovante.html',
+        {
+            'venda': venda,
+            'fiado': fiado,
+            'auto_imprimir': request.GET.get('auto') == '1',
+            'nome_estabelecimento': 'Águia Café',
+        },
     )
 
 
