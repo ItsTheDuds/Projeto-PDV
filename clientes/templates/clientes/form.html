@@ -21,3 +21,35 @@
     </form>
 </div>
 {% endblock %}
+
+
+{% block extra_js %}
+<script>
+(function () {
+    const input = document.getElementById('id_celular');
+    if (!input) return;
+
+    function formatarCelular(valor) {
+        let numeros = valor.replace(/\D/g, '').slice(0, 11);
+
+        if (numeros.length <= 2) {
+            return numeros ? '(' + numeros : '';
+        }
+        if (numeros.length <= 7) {
+            return '(' + numeros.slice(0, 2) + ') ' + numeros.slice(2);
+        }
+        return (
+            '(' + numeros.slice(0, 2) + ') ' +
+            numeros.slice(2, 7) + '-' +
+            numeros.slice(7)
+        );
+    }
+
+    input.value = formatarCelular(input.value);
+
+    input.addEventListener('input', function () {
+        this.value = formatarCelular(this.value);
+    });
+})();
+</script>
+{% endblock %}
