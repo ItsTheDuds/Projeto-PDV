@@ -93,6 +93,27 @@
     .cliente-search-wrap {
         position: relative;
     }
+    .campo-cafe {
+        background: #fff7ed;
+        border: 1.5px solid #c96a1b;
+        color: #3b2416;
+        transition: border-color .15s, box-shadow .15s, background .15s;
+    }
+    .campo-cafe::placeholder {
+        color: #9a6a4a;
+    }
+    .campo-cafe:focus {
+        outline: none;
+        background: #fffaf5;
+        border-color: #a94f0e;
+        box-shadow: 0 0 0 3px rgba(201, 106, 27, .16);
+    }
+    .fiado-cliente-area {
+        padding: .85rem;
+        border: 1px solid #f1c79f;
+        border-radius: .5rem;
+        background: #fffaf5;
+    }
     .cliente-resultados {
         display: none;
         position: absolute;
@@ -216,18 +237,22 @@
                 <h2 style="margin:0;">Produtos</h2>
                 <p class="subtitle">Clique para adicionar ao carrinho.</p>
             </div>
-            <input id="buscaProduto" placeholder="Pesquisar produto..." style="max-width:320px;">
+            <input id="buscaProduto"
+                   class="campo-cafe"
+                   placeholder="Pesquisar por nome ou ID..."
+                   style="max-width:320px;">
         </div>
 
         <div id="listaProdutos" class="produto-lista">
             {% for produto in produtos %}
             <button type="button"
                     class="card produto-card"
+                    data-id="{{ produto.id }}"
                     data-nome="{{ produto.nome|lower }}"
                     onclick="adicionarProduto('{{ produto.id }}', '{{ produto.nome|escapejs }}', '{{ produto.preco }}', '{{ produto.quantidade }}')">
                 <strong style="font-size:1.05rem;">{{ produto.nome }}</strong>
                 <div class="money" style="margin:.5rem 0;">R$ {{ produto.preco }}</div>
-                <small class="muted">Estoque: {{ produto.quantidade }}</small>
+                <small class="muted">ID: #{{ produto.id }} · Estoque: {{ produto.quantidade }}</small>
             </button>
             {% empty %}
             <p>Nenhum produto disponível em estoque.</p>
@@ -241,19 +266,20 @@
         <div style="margin-bottom:1rem;">
             <label for="formaPagamento">Forma de pagamento</label>
             <select id="formaPagamento" onchange="alternarCliente()">
+                <option value="FIADO" selected>Fiado</option>
                 <option value="DINHEIRO">Dinheiro</option>
                 <option value="PIX">Pix</option>
                 <option value="CARTAO">Cartão</option>
-                <option value="FIADO">Fiado</option>
             </select>
         </div>
 
-        <div id="clienteBox" style="display:none; margin-bottom:1rem;">
+        <div id="clienteBox" class="fiado-cliente-area" style="display:block; margin-bottom:1rem;">
             <label for="buscaCliente">Cliente</label>
             <div class="cliente-search-wrap">
                 <input id="buscaCliente"
+                       class="campo-cafe"
                        autocomplete="off"
-                       placeholder="Digite nome ou celular"
+                       placeholder="Pesquisar cliente por nome ou celular"
                        oninput="filtrarClientes()"
                        onfocus="filtrarClientes()">
                 <input type="hidden" id="clienteId">
@@ -516,7 +542,9 @@ async function finalizarVenda() {
 document.getElementById('buscaProduto').addEventListener('input', function () {
     const termo = normalizar(this.value);
     document.querySelectorAll('.produto-card').forEach(card => {
-        card.style.display = card.dataset.nome.includes(termo) ? 'block' : 'none';
+        const correspondeNome = card.dataset.nome.includes(termo);
+        const correspondeId = card.dataset.id.includes(termo);
+        card.style.display = (correspondeNome || correspondeId) ? 'block' : 'none';
     });
 });
 
@@ -528,6 +556,7 @@ document.addEventListener('click', function (event) {
 });
 
 window.addEventListener('load', function () {
+    alternarCliente();
     document.getElementById('buscaProduto').focus();
 });
 </script>
