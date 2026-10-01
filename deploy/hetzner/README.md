@@ -58,3 +58,66 @@ BRANCH=main sh deploy/hetzner/update.sh
 ## Banco de dados
 
 A aplicação continua usando SQLite nesta primeira versão. Faça backups regulares do arquivo do banco antes de atualizações importantes.
+
+## PostgreSQL
+
+Em produção, configure o arquivo `~/.config/aguiacafe.env` com:
+
+```text
+DJANGO_DB_ENGINE=postgresql
+DB_NAME=...
+DB_USER=...
+DB_PASSWORD=...
+DB_HOST=...
+DB_PORT=5432
+```
+
+O hostname deve ser o fornecido pelo konsoleH; não use `localhost`.
+
+Se a opção **Require SSL** for habilitada na criação do banco, acrescente:
+
+```text
+DB_SSLMODE=require
+```
+
+Depois instale as dependências e aplique as migrations:
+
+```bash
+cd ~/djangoprojects/Projeto-PDV
+~/virtualenvs/aguiacafe/bin/pip install -r requirements.txt
+set -a
+. ~/.config/aguiacafe.env
+set +a
+~/virtualenvs/aguiacafe/bin/python manage.py check
+~/virtualenvs/aguiacafe/bin/python manage.py migrate
+```
+
+Como o banco PostgreSQL começa vazio, crie o usuário administrativo novamente:
+
+```bash
+~/virtualenvs/aguiacafe/bin/python manage.py createsuperuser
+```
+
+## Backup PostgreSQL
+
+O script `deploy/hetzner/backup_postgres.sh` cria backups no formato custom do PostgreSQL e mantém 30 dias por padrão.
+
+Teste manual:
+
+```bash
+sh deploy/hetzner/backup_postgres.sh
+```
+
+Para alterar a retenção:
+
+```bash
+BACKUP_RETENTION_DAYS=60 sh deploy/hetzner/backup_postgres.sh
+```
+
+Os arquivos ficam em:
+
+```text
+$HOME/backups/aguiacafe/
+```
+
+Cadastre o script no Cron Job Manager somente depois de confirmar que o backup manual funciona.
