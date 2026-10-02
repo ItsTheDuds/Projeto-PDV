@@ -1,11 +1,15 @@
 import json
+from datetime import date
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import DecimalField, Q, Sum, Value
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
+
+from django.db.models.functions import Coalesce
+from django.utils import timezone
 
 from clientes.models import Cliente
 from fiado.models import Fiado
@@ -37,6 +41,69 @@ def home(request):
             'venda_finalizada': venda_finalizada,
         },
     )
+
+
+
+@require_GET
+def resumo_periodo(request):
+    hoje = timezone.localdate()
+    tipo = request.GET.get('tipo', 'mes').strip()
+
+    if tipo == 'intervalo':
+        inicio_raw = request.GET.get('inicio', '').strip()
+        fim_raw = request.GET.get('fim', '').strip()
+
+        try:
+            inicio = date.fromisoformat(inicio_raw)
+            fim = date.fromisoformat(fim_raw)
+        except ValueError:
+            return JsonResponse({'erro': 'Período inválido.'}, status=400)
+
+        if inicio > fim:
+            return JsonResponse(
+                {'erro': 'A data inicial não pode ser maior que a data final.'},
+                status=400,
+            )
+    else:
+        tipo = 'mes'
+        mes_raw = request.GET.get('mes', '').strip()
+
+        try:
+            if mes_raw:
+                ano, mes = [int(parte) for parte in mes_raw.split('-', 1)]
+                inicio = date(ano, mes, 1)
+            else:
+                inicio = hoje.replace(day=1)
+        except (TypeError, ValueError):
+            return JsonResponse({'erro': 'Mês inválido.'}, status=400)
+
+        if inicio.month == 12:
+            proximo_mes = date(inicio.year + 1, 1, 1)
+        else:
+            proximo_mes = date(inicio.year, inicio.month + 1, 1)
+
+        fim = proximo_mes - timezone.timedelta(days=1)
+
+    total = (
+        Venda.objects.filter(
+            criada_em__date__gte=inicio,
+            criada_em__date__lte=fim,
+        )
+        .aggregate(
+            total=Coalesce(
+                Sum('total'),
+                Value(Decimal('0.00')),
+                output_field=DecimalField(max_digits=14, decimal_places=2),
+            )
+        )['total']
+    )
+
+    return JsonResponse({
+        'tipo': tipo,
+        'inicio': inicio.isoformat(),
+        'fim': fim.isoformat(),
+        'total': f'{total:.2f}',
+    })
 
 
 def historico(request):
