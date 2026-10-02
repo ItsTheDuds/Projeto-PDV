@@ -9,7 +9,10 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8f9fa; color: #212529; margin: 0; }
         .navbar { background: #212529; padding: 1rem; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
         .navbar .container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+        .navbar-left { display: flex; align-items: center; gap: .7rem; }
         .navbar-brand { color: #fff; text-decoration: none; font-weight: 700; font-size: 1.25rem; }
+        .navbar-back { background: #dc3545; color: #fff; border: 1px solid #dc3545; border-radius: .35rem; padding: .42rem .7rem; cursor: pointer; font: inherit; font-weight: 600; }
+        .navbar-back:hover { background: #bb2d3b; border-color: #b02a37; }
         .navbar-user { display: flex; align-items: center; gap: .75rem; color: #fff; font-size: .92rem; }
         .logout-form { margin: 0; }
         .logout-button { background: transparent; color: #fff; border: 1px solid #6c757d; border-radius: .35rem; padding: .42rem .7rem; cursor: pointer; font: inherit; }
@@ -23,7 +26,8 @@
         .btn { display: inline-block; padding: .55rem .9rem; border-radius: .35rem; text-decoration: none; border: 1px solid transparent; cursor: pointer; font-size: .95rem; line-height: 1.2; }
         .btn-primary { background: #0d6efd; color: #fff; }
         .btn-success { background: #198754; color: #fff; }
-        .btn-warning { background: #ffc107; color: #111; }
+        .btn-warning { background: #e0a800; color: #111; border-color: #d39e00; }
+        .btn-warning:hover { background: #c69500; border-color: #b98b00; }
         .btn-danger { background: #dc3545; color: #fff; }
         .btn-dark { background: #212529; color: #fff; }
         .btn-light { background: #f8f9fa; color: #212529; border-color: #ced4da; }
@@ -71,7 +75,10 @@
 {% if user.is_authenticated %}
 <nav class="navbar no-print">
     <div class="container">
-        <a class="navbar-brand" href="{% url 'home' %}">🦅 Águia Café Gestão</a>
+        <div class="navbar-left">
+            <a class="navbar-brand" href="{% url 'home' %}">🦅 Águia Café Gestão</a>
+            <button type="button" class="navbar-back" onclick="window.history.back()">← Voltar</button>
+        </div>
         <div class="navbar-user">
             <span>{{ user.username }}</span>
             <form method="post" action="{% url 'logout' %}" class="logout-form">
