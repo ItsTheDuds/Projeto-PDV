@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block title %}Receber Fiado{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:900px; margin:0 auto;">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Receber de {{ cliente.nome }}</h1>
+            <p class="subtitle">{{ cliente.celular_formatado }}</p>
+        </div>
+        <div class="text-right">
+            <div class="muted">Saldo em aberto</div>
+            <div class="money money-open" style="font-size:1.7rem;">R$ {{ saldo_total|floatformat:2 }}</div>
+        </div>
+    </div>
+
+    {% if saldo_total > 0 %}
+    <form method="post" id="formRecebimento" style="margin-bottom:1.5rem;">
+        {% csrf_token %}
+
+        <div class="grid grid-2">
+            <div>
+                <label for="valor">Valor recebido</label>
+                <input
+                    id="valor"
+                    name="valor"
+                    type="number"
+                    min="0.01"
+                    max="{{ saldo_total|stringformat:'f' }}"
+                    step="0.01"
+                    inputmode="decimal"
+                    placeholder="0,00"
+                    required>
+            </div>
+            <div>
+                <label for="senha">Senha de quitação</label>
+                <input
+                    id="senha"
+                    name="senha"
+                    type="password"
+                    autocomplete="off"
+                    placeholder="Digite a senha"
+                    required>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button
+                type="button"
+                class="btn btn-warning"
+                onclick="quitarTudo()">
+                Quitar tudo — R$ {{ saldo_total|floatformat:2 }}
+            </button>
+            <button type="submit" class="btn btn-success">Confirmar recebimento</button>
+        </div>
+    </form>
+    {% else %}
+    <div class="alert alert-success">Este cliente não possui saldo em aberto.</div>
+    {% endif %}
+
+    <h2 style="margin-top:1.75rem;">Compras em aberto</h2>
+    <p class="muted">Pagamentos parciais são aplicados automaticamente nas compras mais antigas primeiro.</p>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>VENDA</th>
+                    <th>DATA</th>
+                    <th>VALOR</th>
+                    <th>JÁ PAGO</th>
+                    <th>SALDO</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fiado in fiados %}
+                <tr>
+                    <td>#{{ fiado.venda.id }}</td>
+                    <td>{{ fiado.venda.criada_em|date:"d/m/Y H:i" }}</td>
+                    <td class="money">R$ {{ fiado.venda.total|floatformat:2 }}</td>
+                    <td class="money money-ok">R$ {{ fiado.valor_pago|floatformat:2 }}</td>
+                    <td class="money money-open">R$ {{ fiado.saldo_devedor|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5">Nenhuma compra em aberto.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="actions no-print" style="margin-top:1rem;">
+        <a href="{% url 'fiado:cliente_historico' cliente.id %}" class="btn btn-outline">Ver histórico completo</a>
+        <a href="{% url 'fiado:home' %}" class="btn btn-light">Voltar ao Fiado</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function quitarTudo() {
+    const valor = document.getElementById('valor');
+    valor.value = '{{ saldo_total|stringformat:"f" }}';
+    document.getElementById('senha').focus();
+}
+</script>
+{% endblock %}
