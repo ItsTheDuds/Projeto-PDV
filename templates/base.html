@@ -11,7 +11,7 @@
         .navbar .container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
         .navbar-left { display: flex; align-items: center; gap: .7rem; }
         .navbar-brand { color: #fff; text-decoration: none; font-weight: 700; font-size: 1.25rem; }
-        .navbar-back { background: #dc3545; color: #fff; border: 1px solid #dc3545; border-radius: .35rem; padding: .42rem .7rem; cursor: pointer; font: inherit; font-weight: 600; }
+        .navbar-back { display:inline-block; background: #dc3545; color: #fff; border: 1px solid #dc3545; border-radius: .35rem; padding: .42rem .7rem; cursor: pointer; font: inherit; font-weight: 600; text-decoration:none; }
         .navbar-back:hover { background: #bb2d3b; border-color: #b02a37; }
         .navbar-user { display: flex; align-items: center; gap: .75rem; color: #fff; font-size: .92rem; }
         .logout-form { margin: 0; }
@@ -78,7 +78,7 @@
         <div class="navbar-left">
             <a class="navbar-brand" href="{% url 'home' %}">🦅 Águia Café Gestão</a>
             {% if request.resolver_match.view_name != 'home' %}
-            <button type="button" class="navbar-back" onclick="window.history.back()">← Voltar</button>
+            <a class="navbar-back" href="{% url 'home' %}">← Voltar</a>
             {% endif %}
         </div>
         <div class="navbar-user">
