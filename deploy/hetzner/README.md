@@ -102,11 +102,29 @@ Como o banco PostgreSQL começa vazio, crie o usuário administrativo novamente:
 
 O script `deploy/hetzner/backup_postgres.sh` cria backups no formato custom do PostgreSQL e mantém 30 dias por padrão.
 
-Teste manual:
+O horário do backup é controlado pelo próprio script usando o fuso `America/Sao_Paulo`. Por padrão, ele executa o backup às **02:00 de Brasília**, independentemente do horário CET/CEST da Hetzner.
+
+No Cron Job Manager da Hetzner, configure o script para ser chamado **uma vez por hora**, no minuto zero:
+
+```text
+00 * * * *
+```
+
+Nas demais horas, o script encerra normalmente sem criar backup.
+
+Teste manual, ignorando o horário programado:
 
 ```bash
-sh deploy/hetzner/backup_postgres.sh
+FORCE_BACKUP=1 sh deploy/hetzner/backup_postgres.sh
 ```
+
+Para escolher outro horário de Brasília, por exemplo 03:00:
+
+```text
+BACKUP_HOUR_BRASILIA=03
+```
+
+Essa variável pode ser adicionada ao arquivo `~/.config/aguiacafe.env`.
 
 Para alterar a retenção:
 
