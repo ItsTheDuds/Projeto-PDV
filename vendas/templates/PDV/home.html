@@ -463,6 +463,7 @@ function atualizarCarrinho() {
                                min="0"
                                step="0.01"
                                value="${item.preco_unitario.toFixed(2)}"
+                               onwheel="this.blur()"
                                onchange="alterarPreco(${item.produto_id}, this.value)">
                     </div>
                     <div class="subtotal-area">
