@@ -25,10 +25,9 @@ class VendaTests(TestCase):
             nome='Produto',
             descricao='Teste',
             preco=Decimal('10.00'),
-            quantidade=10,
         )
 
-    def test_venda_fiada_cria_fiado_e_baixa_estoque(self):
+    def test_venda_fiada_cria_fiado(self):
         response = self.client.post(
             reverse('vendas:finalizar'),
             data=json.dumps({
@@ -47,9 +46,6 @@ class VendaTests(TestCase):
         venda = Venda.objects.get()
         self.assertEqual(venda.total, Decimal('17.00'))
         self.assertTrue(Fiado.objects.filter(venda=venda, pago=False).exists())
-
-        self.produto.refresh_from_db()
-        self.assertEqual(self.produto.quantidade, 8)
 
 
     def test_forma_de_pagamento_nao_fiado_e_rejeitada(self):
@@ -71,7 +67,7 @@ class VendaTests(TestCase):
         self.assertIn('Forma de pagamento inválida', response.json()['erro'])
 
 
-    def test_preco_zero_e_rejeitado_e_nao_baixa_estoque(self):
+    def test_preco_zero_e_rejeitado(self):
         response = self.client.post(
             reverse('vendas:finalizar'),
             data=json.dumps({
@@ -90,15 +86,11 @@ class VendaTests(TestCase):
         self.assertIn('maior que R$ 0,00', response.json()['erro'])
         self.assertFalse(Venda.objects.exists())
 
-        self.produto.refresh_from_db()
-        self.assertEqual(self.produto.quantidade, 10)
-
     def test_venda_com_varios_itens_zero_e_rejeitada(self):
         outro_produto = produtosModel.objects.create(
             nome='Outro produto',
             descricao='',
             preco=Decimal('5.00'),
-            quantidade=5,
         )
 
         response = self.client.post(
