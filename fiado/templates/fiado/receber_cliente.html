@@ -50,8 +50,8 @@
             <button
                 type="button"
                 class="btn btn-warning"
-                onclick="quitarTudo()">
-                Quitar tudo — R$ {{ saldo_total|floatformat:2 }}
+                onclick="preencherSaldoTotal()">
+                Preencher saldo total — R$ {{ saldo_total|floatformat:2 }}
             </button>
             <button type="submit" class="btn btn-success">Confirmar recebimento</button>
         </div>
@@ -103,10 +103,27 @@
 
 {% block extra_js %}
 <script>
-function quitarTudo() {
+function preencherSaldoTotal() {
     const valor = document.getElementById('valor');
     valor.value = '{{ saldo_total|floatformat:2 }}'.replace(',', '.');
     document.getElementById('senha').focus();
 }
+
+document.getElementById('formRecebimento').addEventListener('submit', function (event) {
+    const valor = Number(document.getElementById('valor').value);
+    const saldo = Number('{{ saldo_total|floatformat:2 }}'.replace(',', '.'));
+
+    if (!Number.isFinite(valor) || valor <= 0) {
+        return;
+    }
+
+    const mensagem = Math.abs(valor - saldo) < 0.005
+        ? 'Você está prestes a quitar TODO o saldo deste cliente no valor de R$ ' + saldo.toFixed(2).replace('.', ',') + '. Deseja continuar?'
+        : 'Confirmar recebimento de R$ ' + valor.toFixed(2).replace('.', ',') + '?';
+
+    if (!window.confirm(mensagem)) {
+        event.preventDefault();
+    }
+});
 </script>
 {% endblock %}
