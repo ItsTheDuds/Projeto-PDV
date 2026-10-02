@@ -170,8 +170,10 @@ def finalizar(request):
                     except InvalidOperation as exc:
                         raise ValueError(f'Preço inválido para {produto.nome}.') from exc
 
-                if preco_unitario < 0:
-                    raise ValueError(f'Preço inválido para {produto.nome}.')
+                if preco_unitario <= 0:
+                    raise ValueError(
+                        f'O preço de {produto.nome} deve ser maior que R$ 0,00.'
+                    )
 
                 subtotal = (preco_unitario * quantidade).quantize(Decimal('0.01'))
 
@@ -186,6 +188,9 @@ def finalizar(request):
                 produto.quantidade -= quantidade
                 produto.save(update_fields=['quantidade'])
                 total += subtotal
+
+            if total <= 0:
+                raise ValueError('O total da venda deve ser maior que R$ 0,00.')
 
             venda.total = total
             venda.save(update_fields=['total'])
