@@ -18,6 +18,7 @@
     {% if saldo_total > 0 %}
     <form method="post" id="formRecebimento" style="margin-bottom:1.5rem;">
         {% csrf_token %}
+        <input type="hidden" name="origem" value="{{ origem }}">
 
         <div class="grid grid-2">
             <div>
@@ -90,8 +91,12 @@
     </div>
 
     <div class="actions no-print" style="margin-top:1rem;">
-        <a href="{% url 'fiado:cliente_historico' cliente.id %}" class="btn btn-outline">Ver histórico completo</a>
-        <a href="{% url 'fiado:home' %}" class="btn btn-light">Voltar ao Fiado</a>
+        <a href="{% url 'fiado:cliente_historico' cliente.id %}?origem={{ origem }}" class="btn btn-outline">Ver conta fiada</a>
+        {% if origem == 'clientes' %}
+            <a href="{% url 'clientes:home' %}" class="btn btn-light">Voltar aos Clientes</a>
+        {% else %}
+            <a href="{% url 'fiado:home' %}" class="btn btn-light">Voltar ao Fiado</a>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
