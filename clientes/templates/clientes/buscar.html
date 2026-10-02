@@ -41,7 +41,7 @@
                         R$ {{ cliente.saldo_devedor|floatformat:2 }}
                     </td>
                     <td class="text-center">
-                        <a href="{% url 'fiado:cliente_historico' cliente.id %}" class="btn btn-primary btn-sm">Abrir</a>
+                        <a href="{% url 'fiado:cliente_historico' cliente.id %}?origem=clientes" class="btn btn-primary btn-sm">Conta fiada</a>
                     </td>
                 </tr>
                 {% empty %}
