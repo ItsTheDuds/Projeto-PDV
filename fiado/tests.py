@@ -14,7 +14,7 @@ from .models import ConfiguracaoFiado, Fiado
 class FiadoTests(TestCase):
     def setUp(self):
         cliente = Cliente.objects.create(nome='Ana', celular='61999999999')
-        produto = produtosModel.objects.create(nome='Item', descricao='x', preco=Decimal('5.00'), quantidade=1)
+        produto = produtosModel.objects.create(nome='Item', descricao='x', preco=Decimal('5.00'))
         venda = Venda.objects.create(cliente=cliente, forma_pagamento='FIADO', total=Decimal('5.00'))
         ItemVenda.objects.create(venda=venda, produto=produto, quantidade=1, preco_unitario=Decimal('5.00'), subtotal=Decimal('5.00'))
         self.fiado = Fiado.objects.create(venda=venda)
