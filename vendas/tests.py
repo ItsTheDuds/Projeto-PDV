@@ -69,3 +69,59 @@ class VendaTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn('Forma de pagamento inválida', response.json()['erro'])
+
+
+    def test_preco_zero_e_rejeitado_e_nao_baixa_estoque(self):
+        response = self.client.post(
+            reverse('vendas:finalizar'),
+            data=json.dumps({
+                'cliente_id': self.cliente.id,
+                'forma_pagamento': 'FIADO',
+                'itens': [{
+                    'produto_id': self.produto.id,
+                    'quantidade': 2,
+                    'preco_unitario': '0.00',
+                }],
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('maior que R$ 0,00', response.json()['erro'])
+        self.assertFalse(Venda.objects.exists())
+
+        self.produto.refresh_from_db()
+        self.assertEqual(self.produto.quantidade, 10)
+
+    def test_venda_com_varios_itens_zero_e_rejeitada(self):
+        outro_produto = produtosModel.objects.create(
+            nome='Outro produto',
+            descricao='',
+            preco=Decimal('5.00'),
+            quantidade=5,
+        )
+
+        response = self.client.post(
+            reverse('vendas:finalizar'),
+            data=json.dumps({
+                'cliente_id': self.cliente.id,
+                'forma_pagamento': 'FIADO',
+                'itens': [
+                    {
+                        'produto_id': self.produto.id,
+                        'quantidade': 1,
+                        'preco_unitario': '0.00',
+                    },
+                    {
+                        'produto_id': outro_produto.id,
+                        'quantidade': 1,
+                        'preco_unitario': '0.00',
+                    },
+                ],
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Venda.objects.exists())
+        self.assertFalse(Fiado.objects.exists())
