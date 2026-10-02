@@ -33,6 +33,9 @@ def home(request):
             'fiados': fiados,
             'query': query,
             'senha_configurada': configuracao.senha_configurada,
+            'pode_configurar_senha': (
+                not configuracao.senha_configurada or request.user.is_superuser
+            ),
         },
     )
 
@@ -56,14 +59,16 @@ def detalhe(request, id):
 def configurar_senha(request):
     configuracao = ConfiguracaoFiado.carregar()
 
+    if configuracao.senha_configurada and not request.user.is_superuser:
+        messages.error(
+            request,
+            'A senha de quitação já foi definida. Somente o administrador do sistema pode alterá-la ou resetá-la.',
+        )
+        return redirect('fiado:home')
+
     if request.method == 'POST':
-        senha_atual = request.POST.get('senha_atual', '')
         nova_senha = request.POST.get('nova_senha', '')
         confirmar_senha = request.POST.get('confirmar_senha', '')
-
-        if configuracao.senha_configurada and not configuracao.conferir_senha(senha_atual):
-            messages.error(request, 'A senha atual está incorreta.')
-            return redirect('fiado:configurar_senha')
 
         if len(nova_senha) < 4:
             messages.error(request, 'A nova senha deve ter pelo menos 4 caracteres.')
@@ -73,14 +78,23 @@ def configurar_senha(request):
             messages.error(request, 'A confirmação da senha não confere.')
             return redirect('fiado:configurar_senha')
 
+        primeira_configuracao = not configuracao.senha_configurada
         configuracao.definir_senha(nova_senha)
-        messages.success(request, 'Senha de quitação atualizada com sucesso.')
+
+        if primeira_configuracao:
+            messages.success(request, 'Senha de quitação cadastrada com sucesso.')
+        else:
+            messages.success(request, 'Senha de quitação redefinida com sucesso.')
+
         return redirect('fiado:home')
 
     return render(
         request,
         'fiado/configurar_senha.html',
-        {'senha_configurada': configuracao.senha_configurada},
+        {
+            'senha_configurada': configuracao.senha_configurada,
+            'alteracao_admin': configuracao.senha_configurada and request.user.is_superuser,
+        },
     )
 
 
