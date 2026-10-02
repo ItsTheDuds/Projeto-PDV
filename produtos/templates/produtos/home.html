@@ -45,5 +45,17 @@
             </tbody>
         </table>
     </div>
+
+    {% if produtos.has_other_pages %}
+    <div class="actions no-print" style="justify-content:center; align-items:center; margin-top:1rem;">
+        {% if produtos.has_previous %}
+            <a class="btn btn-light" href="?page={{ produtos.previous_page_number }}">← Anterior</a>
+        {% endif %}
+        <span class="muted">Página {{ produtos.number }} de {{ produtos.paginator.num_pages }}</span>
+        {% if produtos.has_next %}
+            <a class="btn btn-light" href="?page={{ produtos.next_page_number }}">Próxima →</a>
+        {% endif %}
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
