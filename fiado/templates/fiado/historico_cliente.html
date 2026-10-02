@@ -9,7 +9,7 @@
             <h1 class="page-title">Histórico de {{ cliente.nome }}</h1>
             <p class="subtitle">{{ cliente.celular_formatado }}{% if cliente.email %} — {{ cliente.email }}{% endif %}</p>
         </div>
-        <div>
+        <div class="text-right">
             <div class="muted">Saldo atual</div>
             <div class="money {% if saldo > 0 %}money-open{% else %}money-ok{% endif %}" style="font-size:1.5rem;">
                 R$ {{ saldo|floatformat:2 }}
@@ -17,31 +17,90 @@
         </div>
     </div>
 
+    {% if saldo > 0 %}
+    <div class="actions no-print" style="justify-content:flex-end; margin-bottom:1.25rem;">
+        <a href="{% url 'fiado:receber_cliente' cliente.id %}" class="btn btn-success">Receber pagamento</a>
+    </div>
+    {% endif %}
+
+    <h2>Compras fiadas</h2>
     <div class="table-wrap">
         <table>
-            <thead><tr><th>VENDA</th><th>DATA</th><th>VALOR</th><th>STATUS</th><th class="text-center">PEDIDO</th></tr></thead>
+            <thead>
+                <tr>
+                    <th>VENDA</th>
+                    <th>DATA</th>
+                    <th>VALOR</th>
+                    <th>PAGO</th>
+                    <th>SALDO</th>
+                    <th>STATUS</th>
+                    <th class="text-center">PEDIDO</th>
+                </tr>
+            </thead>
             <tbody>
                 {% for fiado in fiados %}
                 <tr>
                     <td>#{{ fiado.venda.id }}</td>
                     <td>{{ fiado.venda.criada_em|date:"d/m/Y H:i" }}</td>
                     <td class="money">R$ {{ fiado.venda.total|floatformat:2 }}</td>
+                    <td class="money money-ok">R$ {{ fiado.valor_pago|floatformat:2 }}</td>
+                    <td class="money {% if fiado.saldo_devedor > 0 %}money-open{% else %}money-ok{% endif %}">
+                        R$ {{ fiado.saldo_devedor|floatformat:2 }}
+                    </td>
                     <td>
                         {% if fiado.pago %}
                             <span class="badge badge-paid">Pago</span>
+                        {% elif fiado.valor_pago > 0 %}
+                            <span class="badge badge-open">Parcial</span>
                         {% else %}
                             <span class="badge badge-open">Em aberto</span>
                         {% endif %}
                     </td>
-                    <td class="text-center"><a href="{% url 'fiado:detalhe' fiado.id %}" class="btn btn-primary btn-sm">Visualizar</a></td>
+                    <td class="text-center">
+                        <a href="{% url 'fiado:detalhe' fiado.id %}" class="btn btn-primary btn-sm">Visualizar</a>
+                    </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="5">Este cliente ainda não possui compras fiadas.</td></tr>
+                <tr><td colspan="7">Este cliente ainda não possui compras fiadas.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 
-    <a href="{% url 'clientes:home' %}" class="back">← Voltar aos Clientes</a>
+    <h2 style="margin-top:2rem;">Recebimentos</h2>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>DATA</th>
+                    <th>VALOR RECEBIDO</th>
+                    <th>REGISTRADO POR</th>
+                    <th>APLICADO NAS VENDAS</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for recebimento in recebimentos %}
+                <tr>
+                    <td>{{ recebimento.criado_em|date:"d/m/Y H:i" }}</td>
+                    <td class="money money-ok">R$ {{ recebimento.valor_total|floatformat:2 }}</td>
+                    <td>{% if recebimento.usuario %}{{ recebimento.usuario.username }}{% else %}-{% endif %}</td>
+                    <td>
+                        {% for aplicacao in recebimento.aplicacoes.all %}
+                            #{{ aplicacao.fiado.venda.id }}: R$ {{ aplicacao.valor|floatformat:2 }}{% if not forloop.last %}<br>{% endif %}
+                        {% empty %}
+                            -
+                        {% endfor %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4">Nenhum recebimento registrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="actions no-print" style="margin-top:1rem;">
+        <a href="{% url 'fiado:home' %}" class="btn btn-light">Voltar ao Fiado</a>
+    </div>
 </div>
 {% endblock %}
