@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 
 from clientes.models import Cliente
 
@@ -22,6 +23,11 @@ def _decimal_pagamento(valor):
         return Decimal(texto).quantize(Decimal('0.01'))
     except (InvalidOperation, ValueError):
         raise ValueError('Informe um valor de pagamento válido.')
+
+
+def _origem(request):
+    origem = request.POST.get('origem') or request.GET.get('origem')
+    return origem if origem in ('clientes', 'fiado') else 'fiado'
 
 
 def _fiados_abertos_cliente(cliente):
@@ -83,6 +89,7 @@ def home(request):
 
 
 def detalhe(request, id):
+    origem = _origem(request)
     fiado = get_object_or_404(
         Fiado.objects.select_related('venda', 'venda__cliente').prefetch_related('venda__itens__produto'),
         id=id,
@@ -94,6 +101,7 @@ def detalhe(request, id):
         {
             'fiado': fiado,
             'senha_configurada': configuracao.senha_configurada,
+            'origem': origem,
         },
     )
 
@@ -141,6 +149,7 @@ def configurar_senha(request):
 
 
 def receber_cliente(request, cliente_id):
+    origem = _origem(request)
     cliente = get_object_or_404(Cliente, id=cliente_id)
     configuracao = ConfiguracaoFiado.carregar()
     fiados = list(_fiados_abertos_cliente(cliente))
@@ -154,24 +163,24 @@ def receber_cliente(request, cliente_id):
         senha = request.POST.get('senha', '')
         if not configuracao.conferir_senha(senha):
             messages.error(request, 'Senha de quitação inválida.')
-            return redirect('fiado:receber_cliente', cliente_id=cliente.id)
+            return redirect(f"{reverse('fiado:receber_cliente', kwargs={'cliente_id': cliente.id})}?origem={origem}")
 
         try:
             valor = _decimal_pagamento(request.POST.get('valor'))
         except ValueError as exc:
             messages.error(request, str(exc))
-            return redirect('fiado:receber_cliente', cliente_id=cliente.id)
+            return redirect(f"{reverse('fiado:receber_cliente', kwargs={'cliente_id': cliente.id})}?origem={origem}")
 
         if valor <= 0:
             messages.error(request, 'O valor recebido deve ser maior que R$ 0,00.')
-            return redirect('fiado:receber_cliente', cliente_id=cliente.id)
+            return redirect(f"{reverse('fiado:receber_cliente', kwargs={'cliente_id': cliente.id})}?origem={origem}")
 
         if valor > saldo_total:
             messages.error(
                 request,
                 f'O valor recebido não pode ser maior que o saldo de R$ {saldo_total:.2f}.',
             )
-            return redirect('fiado:receber_cliente', cliente_id=cliente.id)
+            return redirect(f"{reverse('fiado:receber_cliente', kwargs={'cliente_id': cliente.id})}?origem={origem}")
 
         with transaction.atomic():
             fiados_bloqueados = list(
@@ -190,7 +199,7 @@ def receber_cliente(request, cliente_id):
                     request,
                     'O saldo mudou enquanto o recebimento era processado. Tente novamente.',
                 )
-                return redirect('fiado:receber_cliente', cliente_id=cliente.id)
+                return redirect(f"{reverse('fiado:receber_cliente', kwargs={'cliente_id': cliente.id})}?origem={origem}")
 
             recebimento = RecebimentoFiado.objects.create(
                 cliente=cliente,
@@ -219,7 +228,7 @@ def receber_cliente(request, cliente_id):
             request,
             f'Recebimento de R$ {valor:.2f} registrado para {cliente.nome}.',
         )
-        return redirect('fiado:cliente_historico', cliente_id=cliente.id)
+        return redirect(f"{reverse('fiado:cliente_historico', kwargs={'cliente_id': cliente.id})}?origem={origem}")
 
     return render(
         request,
@@ -229,6 +238,7 @@ def receber_cliente(request, cliente_id):
             'fiados': fiados,
             'saldo_total': saldo_total,
             'senha_configurada': configuracao.senha_configurada,
+            'origem': origem,
         },
     )
 
@@ -279,6 +289,7 @@ def marcar_pago(request, id):
 
 
 def cliente_historico(request, cliente_id):
+    origem = _origem(request)
     cliente = get_object_or_404(Cliente, id=cliente_id)
     fiados = list(
         Fiado.objects.filter(venda__cliente=cliente)
@@ -302,5 +313,6 @@ def cliente_historico(request, cliente_id):
             'fiados': fiados,
             'saldo': saldo,
             'recebimentos': recebimentos,
+            'origem': origem,
         },
     )
