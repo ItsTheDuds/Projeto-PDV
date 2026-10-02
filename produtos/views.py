@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.db.models.deletion import ProtectedError
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -7,10 +8,12 @@ from .models import produtosModel
 
 
 def produtos_home(request):
+    produtos = produtosModel.objects.all().order_by('nome', 'id')
+    pagina = Paginator(produtos, 20).get_page(request.GET.get('page'))
     return render(
         request,
         'produtos/home.html',
-        {'produtos': produtosModel.objects.all().order_by('nome')},
+        {'produtos': pagina},
     )
 
 
@@ -74,7 +77,7 @@ def produtos_remover(request, id):
         except ProtectedError:
             messages.error(
                 request,
-                'Este produto já aparece em vendas e não pode ser removido. Edite o estoque para 0 se não quiser mais vendê-lo.',
+                'Este produto já aparece em vendas e não pode ser removido, pois faz parte do histórico.',
             )
         return redirect('produtos:produtos_home')
 
