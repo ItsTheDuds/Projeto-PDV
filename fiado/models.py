@@ -123,7 +123,7 @@ class AplicacaoRecebimento(models.Model):
     valor = models.DecimalField(max_digits=12, decimal_places=2)
 
     class Meta:
-        ordering = ['fiado__venda__criada_em', 'fiado_id']
+        ordering = ['id']
 
     def __str__(self):
         return f'R$ {self.valor} na venda #{self.fiado.venda_id}'
