@@ -314,7 +314,15 @@
     </div>
 
     <div class="card painel-carrinho">
-        <h2 style="margin-top:0;">Finalizar venda</h2>
+        <button id="finalizarBtn"
+                type="button"
+                class="btn btn-success"
+                style="width:100%; min-height:52px; margin-bottom:1rem; font-size:1.05rem; font-weight:700;"
+                onclick="finalizarVenda()">
+            Finalizar venda
+        </button>
+
+        <p id="erroVenda" class="alert alert-error" style="display:none; margin:0 0 1rem;"></p>
 
         <div style="margin-bottom:1rem;">
             <label for="formaPagamento">Forma de pagamento</label>
@@ -359,12 +367,7 @@
                 Total: <span id="valorTotal">R$ 0,00</span>
             </h2>
 
-            <button id="finalizarBtn" class="btn btn-success" style="width:100%; min-height:48px;" onclick="finalizarVenda()">
-                Finalizar venda
-            </button>
         </div>
-
-        <p id="erroVenda" class="alert alert-error" style="display:none; margin-top:1rem;"></p>
     </div>
 </div>
 {% endblock %}
