@@ -1,13 +1,36 @@
 import re
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
-from django.db.models import DecimalField, Q, Sum, Value
-from django.db.models.functions import Coalesce
+from django.db import transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from clientes.models import Cliente
 
-from .models import ConfiguracaoFiado, Fiado
+from .models import (
+    AplicacaoRecebimento,
+    ConfiguracaoFiado,
+    Fiado,
+    RecebimentoFiado,
+)
+
+
+def _decimal_pagamento(valor):
+    texto = str(valor or '').strip().replace('.', '').replace(',', '.')
+    try:
+        return Decimal(texto).quantize(Decimal('0.01'))
+    except (InvalidOperation, ValueError):
+        raise ValueError('Informe um valor de pagamento válido.')
+
+
+def _fiados_abertos_cliente(cliente):
+    return (
+        Fiado.objects.filter(venda__cliente=cliente, pago=False)
+        .select_related('venda', 'venda__cliente')
+        .prefetch_related('venda__itens__produto')
+        .order_by('venda__criada_em', 'id')
+    )
 
 
 def home(request):
@@ -15,7 +38,7 @@ def home(request):
     fiados = (
         Fiado.objects.filter(pago=False)
         .select_related('venda', 'venda__cliente')
-        .prefetch_related('venda__itens__produto')
+        .order_by('venda__cliente__nome', 'venda__criada_em', 'id')
     )
 
     if query:
@@ -25,12 +48,31 @@ def home(request):
             filtro |= Q(venda__cliente__celular__icontains=celular_query)
         fiados = fiados.filter(filtro)
 
+    agrupados = {}
+    for fiado in fiados:
+        cliente = fiado.venda.cliente
+        if cliente is None:
+            continue
+
+        dados = agrupados.setdefault(
+            cliente.id,
+            {
+                'cliente': cliente,
+                'quantidade_compras': 0,
+                'saldo': Decimal('0.00'),
+            },
+        )
+        dados['quantidade_compras'] += 1
+        dados['saldo'] += fiado.saldo_devedor
+
+    clientes_em_aberto = list(agrupados.values())
+
     configuracao = ConfiguracaoFiado.carregar()
     return render(
         request,
         'fiado/home.html',
         {
-            'fiados': fiados,
+            'clientes_em_aberto': clientes_em_aberto,
             'query': query,
             'senha_configurada': configuracao.senha_configurada,
             'pode_configurar_senha': (
@@ -98,8 +140,104 @@ def configurar_senha(request):
     )
 
 
+def receber_cliente(request, cliente_id):
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    configuracao = ConfiguracaoFiado.carregar()
+    fiados = list(_fiados_abertos_cliente(cliente))
+    saldo_total = sum((fiado.saldo_devedor for fiado in fiados), Decimal('0.00'))
+
+    if request.method == 'POST':
+        if not configuracao.senha_configurada:
+            messages.error(request, 'Cadastre primeiro a senha de quitação do fiado.')
+            return redirect('fiado:configurar_senha')
+
+        senha = request.POST.get('senha', '')
+        if not configuracao.conferir_senha(senha):
+            messages.error(request, 'Senha de quitação inválida.')
+            return redirect('fiado:receber_cliente', cliente_id=cliente.id)
+
+        try:
+            valor = _decimal_pagamento(request.POST.get('valor'))
+        except ValueError as exc:
+            messages.error(request, str(exc))
+            return redirect('fiado:receber_cliente', cliente_id=cliente.id)
+
+        if valor <= 0:
+            messages.error(request, 'O valor recebido deve ser maior que R$ 0,00.')
+            return redirect('fiado:receber_cliente', cliente_id=cliente.id)
+
+        if valor > saldo_total:
+            messages.error(
+                request,
+                f'O valor recebido não pode ser maior que o saldo de R$ {saldo_total:.2f}.',
+            )
+            return redirect('fiado:receber_cliente', cliente_id=cliente.id)
+
+        with transaction.atomic():
+            fiados_bloqueados = list(
+                Fiado.objects.select_for_update()
+                .filter(venda__cliente=cliente, pago=False)
+                .select_related('venda')
+                .order_by('venda__criada_em', 'id')
+            )
+
+            saldo_atual = sum(
+                (fiado.saldo_devedor for fiado in fiados_bloqueados),
+                Decimal('0.00'),
+            )
+            if valor > saldo_atual:
+                messages.error(
+                    request,
+                    'O saldo mudou enquanto o recebimento era processado. Tente novamente.',
+                )
+                return redirect('fiado:receber_cliente', cliente_id=cliente.id)
+
+            recebimento = RecebimentoFiado.objects.create(
+                cliente=cliente,
+                valor_total=valor,
+                usuario=request.user,
+            )
+
+            restante = valor
+            for fiado in fiados_bloqueados:
+                if restante <= 0:
+                    break
+
+                aplicar = min(restante, fiado.saldo_devedor)
+                if aplicar <= 0:
+                    continue
+
+                fiado.registrar_pagamento(aplicar)
+                AplicacaoRecebimento.objects.create(
+                    recebimento=recebimento,
+                    fiado=fiado,
+                    valor=aplicar,
+                )
+                restante -= aplicar
+
+        messages.success(
+            request,
+            f'Recebimento de R$ {valor:.2f} registrado para {cliente.nome}.',
+        )
+        return redirect('fiado:cliente_historico', cliente_id=cliente.id)
+
+    return render(
+        request,
+        'fiado/receber_cliente.html',
+        {
+            'cliente': cliente,
+            'fiados': fiados,
+            'saldo_total': saldo_total,
+            'senha_configurada': configuracao.senha_configurada,
+        },
+    )
+
+
 def marcar_pago(request, id):
-    fiado = get_object_or_404(Fiado, id=id)
+    fiado = get_object_or_404(
+        Fiado.objects.select_related('venda', 'venda__cliente'),
+        id=id,
+    )
     configuracao = ConfiguracaoFiado.carregar()
 
     if request.method == 'POST':
@@ -112,8 +250,29 @@ def marcar_pago(request, id):
             messages.error(request, 'Senha inválida.')
             return redirect('fiado:detalhe', id=fiado.id)
 
-        fiado.marcar_como_pago()
-        messages.success(request, 'Fiado marcado como pago.')
+        if fiado.pago:
+            return redirect('fiado:detalhe', id=fiado.id)
+
+        with transaction.atomic():
+            fiado = (
+                Fiado.objects.select_for_update()
+                .select_related('venda', 'venda__cliente')
+                .get(id=fiado.id)
+            )
+            valor = fiado.saldo_devedor
+            recebimento = RecebimentoFiado.objects.create(
+                cliente=fiado.venda.cliente,
+                valor_total=valor,
+                usuario=request.user,
+            )
+            fiado.registrar_pagamento(valor)
+            AplicacaoRecebimento.objects.create(
+                recebimento=recebimento,
+                fiado=fiado,
+                valor=valor,
+            )
+
+        messages.success(request, 'Pedido quitado com sucesso.')
         return redirect('fiado:detalhe', id=fiado.id)
 
     return redirect('fiado:detalhe', id=fiado.id)
@@ -121,22 +280,27 @@ def marcar_pago(request, id):
 
 def cliente_historico(request, cliente_id):
     cliente = get_object_or_404(Cliente, id=cliente_id)
-    fiados = (
+    fiados = list(
         Fiado.objects.filter(venda__cliente=cliente)
         .select_related('venda')
         .prefetch_related('venda__itens__produto')
+        .order_by('-venda__criada_em', '-id')
     )
-    saldo = (
-        fiados.filter(pago=False).aggregate(
-            total=Coalesce(
-                Sum('venda__total'),
-                Value(0),
-                output_field=DecimalField(max_digits=12, decimal_places=2),
-            )
-        )['total']
+    saldo = sum((fiado.saldo_devedor for fiado in fiados), Decimal('0.00'))
+    recebimentos = (
+        RecebimentoFiado.objects.filter(cliente=cliente)
+        .select_related('usuario')
+        .prefetch_related('aplicacoes__fiado__venda')
+        .order_by('-criado_em')
     )
+
     return render(
         request,
         'fiado/historico_cliente.html',
-        {'cliente': cliente, 'fiados': fiados, 'saldo': saldo},
+        {
+            'cliente': cliente,
+            'fiados': fiados,
+            'saldo': saldo,
+            'recebimentos': recebimentos,
+        },
     )
