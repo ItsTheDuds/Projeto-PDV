@@ -1,7 +1,7 @@
 import re
 
 from django.contrib import messages
-from django.db.models import DecimalField, Q, Sum, Value
+from django.db.models import DecimalField, F, Q, Sum, Value
 from django.db.models.deletion import ProtectedError
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404, redirect, render
@@ -11,14 +11,29 @@ from .models import Cliente
 
 
 def _com_saldo(queryset):
-    return queryset.annotate(
-        saldo_devedor=Coalesce(
-            Sum(
-                'vendas__total',
-                filter=Q(vendas__fiado__pago=False),
+    campo_decimal = DecimalField(max_digits=12, decimal_places=2)
+    return (
+        queryset
+        .annotate(
+            total_fiado_aberto=Coalesce(
+                Sum(
+                    'vendas__total',
+                    filter=Q(vendas__fiado__pago=False),
+                ),
+                Value(0),
+                output_field=campo_decimal,
             ),
-            Value(0),
-            output_field=DecimalField(max_digits=12, decimal_places=2),
+            total_fiado_pago_parcial=Coalesce(
+                Sum(
+                    'vendas__fiado__valor_pago',
+                    filter=Q(vendas__fiado__pago=False),
+                ),
+                Value(0),
+                output_field=campo_decimal,
+            ),
+        )
+        .annotate(
+            saldo_devedor=F('total_fiado_aberto') - F('total_fiado_pago_parcial')
         )
     )
 
