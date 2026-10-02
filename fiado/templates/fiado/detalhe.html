@@ -6,7 +6,7 @@
 <div class="card">
     <div class="page-header">
         <div>
-            <h1 class="page-title">Pedido #{{ fiado.venda.id }}</h1>
+            <h1 class="page-title">Detalhes da compra #{{ fiado.venda.id }}</h1>
             <p class="subtitle">{{ fiado.venda.cliente.nome }} — {{ fiado.venda.cliente.celular_formatado }}</p>
         </div>
         <div>
@@ -61,22 +61,12 @@
            class="btn btn-outline">Imprimir 80 mm</a>
 
         {% if not fiado.pago %}
-            <a href="{% url 'fiado:receber_cliente' fiado.venda.cliente.id %}" class="btn btn-success">
-                Receber do cliente
+            <a href="{% url 'fiado:receber_cliente' fiado.venda.cliente.id %}?origem={{ origem }}" class="btn btn-success">
+                Receber pagamento
             </a>
-
-            {% if senha_configurada %}
-            <form method="post" action="{% url 'fiado:marcar_pago' fiado.id %}" style="display:flex; gap:.5rem; align-items:center;">
-                {% csrf_token %}
-                <input type="password" name="senha" placeholder="Senha de quitação" required style="width:190px;">
-                <button type="submit" class="btn btn-warning">Quitar somente este pedido</button>
-            </form>
-            {% else %}
-            <a href="{% url 'fiado:configurar_senha' %}" class="btn btn-warning">Cadastrar senha para quitar</a>
-            {% endif %}
         {% endif %}
     </div>
 
-    <a href="{% url 'fiado:cliente_historico' fiado.venda.cliente.id %}" class="back no-print">← Voltar ao histórico do cliente</a>
+    <a href="{% url 'fiado:cliente_historico' fiado.venda.cliente.id %}?origem={{ origem }}" class="back no-print">← Voltar à conta fiada</a>
 </div>
 {% endblock %}
