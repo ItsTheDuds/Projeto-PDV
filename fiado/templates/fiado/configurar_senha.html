@@ -8,10 +8,11 @@
         <div>
             <h1 class="page-title">Senha para quitar fiado</h1>
             <p class="subtitle">
-                {% if senha_configurada %}
-                    Altere a senha usada para confirmar que uma dívida foi paga.
+                {% if alteracao_admin %}
+                    Área administrativa: redefina a senha usada para confirmar a quitação de dívidas.
                 {% else %}
-                    Cadastre a senha que será solicitada ao marcar uma dívida como paga.
+                    Cadastre a primeira senha que será solicitada ao marcar uma dívida como paga.
+                    Depois disso, somente o administrador do sistema poderá alterá-la ou resetá-la.
                 {% endif %}
             </p>
         </div>
@@ -19,13 +20,6 @@
 
     <form method="post">
         {% csrf_token %}
-
-        {% if senha_configurada %}
-        <p>
-            <label for="senha_atual">Senha atual</label>
-            <input id="senha_atual" name="senha_atual" type="password" required autocomplete="current-password">
-        </p>
-        {% endif %}
 
         <p>
             <label for="nova_senha">Nova senha</label>
@@ -40,7 +34,7 @@
         <div class="form-actions">
             <a href="{% url 'fiado:home' %}" class="btn btn-light">Cancelar</a>
             <button type="submit" class="btn btn-success">
-                {% if senha_configurada %}Alterar senha{% else %}Cadastrar senha{% endif %}
+                {% if alteracao_admin %}Redefinir senha{% else %}Cadastrar primeira senha{% endif %}
             </button>
         </div>
     </form>
