@@ -10,9 +10,13 @@
             <p class="subtitle">Clientes que possuem compras pendentes.</p>
         </div>
         <div class="actions no-print">
+            {% if pode_configurar_senha %}
             <a href="{% url 'fiado:configurar_senha' %}" class="btn btn-dark">
-                {% if senha_configurada %}Alterar senha de quitação{% else %}Cadastrar senha de quitação{% endif %}
+                {% if senha_configurada %}Alterar / resetar senha de quitação{% else %}Cadastrar primeira senha de quitação{% endif %}
             </a>
+            {% elif senha_configurada %}
+            <span class="badge badge-paid">Senha de quitação configurada</span>
+            {% endif %}
         </div>
     </div>
 
