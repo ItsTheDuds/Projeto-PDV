@@ -7,7 +7,7 @@
     <div class="page-header">
         <div>
             <h1 class="page-title">Produtos</h1>
-            <p class="subtitle">Cadastro, preço e estoque dos produtos.</p>
+            <p class="subtitle">Cadastro e preço dos produtos.</p>
         </div>
         <div class="actions">
             <a href="{% url 'produtos:produtos_buscar' %}" class="btn btn-outline">Buscar produto</a>
@@ -22,7 +22,6 @@
                     <th>PRODUTO</th>
                     <th>DESCRIÇÃO</th>
                     <th>PREÇO</th>
-                    <th>ESTOQUE</th>
                     <th class="text-center">EDITAR</th>
                     <th class="text-center">REMOVER</th>
                 </tr>
@@ -33,13 +32,6 @@
                     <td><strong>{{ produto.nome }}</strong></td>
                     <td>{{ produto.descricao|default:"-"|truncatechars:60 }}</td>
                     <td class="money">R$ {{ produto.preco|floatformat:2 }}</td>
-                    <td>
-                        {% if produto.quantidade > 0 %}
-                            {{ produto.quantidade }}
-                        {% else %}
-                            <span class="badge badge-open">Sem estoque</span>
-                        {% endif %}
-                    </td>
                     <td class="text-center">
                         <a href="{% url 'produtos:produtos_editar' produto.id %}" class="btn btn-warning btn-sm">Editar</a>
                     </td>
@@ -48,7 +40,7 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="6">Nenhum produto cadastrado.</td></tr>
+                <tr><td colspan="5">Nenhum produto cadastrado.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
