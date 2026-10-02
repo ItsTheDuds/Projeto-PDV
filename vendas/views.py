@@ -1,5 +1,5 @@
 import json
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
@@ -82,7 +82,7 @@ def resumo_periodo(request):
         else:
             proximo_mes = date(inicio.year, inicio.month + 1, 1)
 
-        fim = proximo_mes - timezone.timedelta(days=1)
+        fim = proximo_mes - timedelta(days=1)
 
     total = (
         Venda.objects.filter(
