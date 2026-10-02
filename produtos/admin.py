@@ -5,9 +5,8 @@ from .models import produtosModel
 
 @admin.register(produtosModel)
 class ProdutoAdmin(admin.ModelAdmin):
-    list_display = ('id', 'nome', 'preco', 'quantidade', 'estoque_status')
+    list_display = ('id', 'nome', 'preco')
     search_fields = ('id', 'nome', 'descricao')
-    list_filter = ('quantidade',)
     ordering = ('nome',)
     list_per_page = 50
 
@@ -21,13 +20,7 @@ class ProdutoAdmin(admin.ModelAdmin):
         (
             'Comercial',
             {
-                'fields': ('preco', 'quantidade'),
+                'fields': ('preco',),
             },
         ),
     )
-
-    @admin.display(description='Estoque')
-    def estoque_status(self, obj):
-        if obj.quantidade <= 0:
-            return 'Sem estoque'
-        return f'{obj.quantidade} un.'
