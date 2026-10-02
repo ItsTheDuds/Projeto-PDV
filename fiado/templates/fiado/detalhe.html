@@ -12,6 +12,8 @@
         <div>
             {% if fiado.pago %}
                 <span class="badge badge-paid">PAGO</span>
+            {% elif fiado.valor_pago > 0 %}
+                <span class="badge badge-open">PAGO PARCIALMENTE</span>
             {% else %}
                 <span class="badge badge-open">EM ABERTO</span>
             {% endif %}
@@ -36,19 +38,38 @@
         </table>
     </div>
 
-    <h2 class="text-right">Total: R$ {{ fiado.venda.total|floatformat:2 }}</h2>
+    <div class="grid grid-3" style="margin-top:1.5rem;">
+        <div class="card">
+            <div class="muted">Valor da compra</div>
+            <div class="money" style="font-size:1.25rem;">R$ {{ fiado.venda.total|floatformat:2 }}</div>
+        </div>
+        <div class="card">
+            <div class="muted">Já pago</div>
+            <div class="money money-ok" style="font-size:1.25rem;">R$ {{ fiado.valor_pago|floatformat:2 }}</div>
+        </div>
+        <div class="card">
+            <div class="muted">Saldo</div>
+            <div class="money {% if fiado.saldo_devedor > 0 %}money-open{% else %}money-ok{% endif %}" style="font-size:1.25rem;">
+                R$ {{ fiado.saldo_devedor|floatformat:2 }}
+            </div>
+        </div>
+    </div>
 
-    <div class="actions no-print" style="justify-content:flex-end;">
+    <div class="actions no-print" style="justify-content:flex-end; margin-top:1.25rem;">
         <a href="{% url 'vendas:comprovante' fiado.venda.id %}?auto=1"
            target="_blank"
            class="btn btn-outline">Imprimir 80 mm</a>
 
         {% if not fiado.pago %}
+            <a href="{% url 'fiado:receber_cliente' fiado.venda.cliente.id %}" class="btn btn-success">
+                Receber do cliente
+            </a>
+
             {% if senha_configurada %}
             <form method="post" action="{% url 'fiado:marcar_pago' fiado.id %}" style="display:flex; gap:.5rem; align-items:center;">
                 {% csrf_token %}
                 <input type="password" name="senha" placeholder="Senha de quitação" required style="width:190px;">
-                <button type="submit" class="btn btn-success">Marcar como PAGO</button>
+                <button type="submit" class="btn btn-warning">Quitar somente este pedido</button>
             </form>
             {% else %}
             <a href="{% url 'fiado:configurar_senha' %}" class="btn btn-warning">Cadastrar senha para quitar</a>
@@ -56,6 +77,6 @@
         {% endif %}
     </div>
 
-    <a href="{% url 'fiado:home' %}" class="back no-print">← Voltar ao Fiado</a>
+    <a href="{% url 'fiado:cliente_historico' fiado.venda.cliente.id %}" class="back no-print">← Voltar ao histórico do cliente</a>
 </div>
 {% endblock %}
