@@ -16,7 +16,7 @@ def preencher_valor_pago(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('clientes', '0002_alter_cliente_celular'),
+        ('clientes', '0001_initial'),
         ('fiado', '0001_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
