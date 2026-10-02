@@ -4,7 +4,7 @@ from .models import produtosModel
 class produtoForm(forms.ModelForm):
     class Meta:
         model = produtosModel
-        fields = ['nome', 'descricao', 'preco', 'quantidade']
+        fields = ['nome', 'descricao', 'preco']
         widgets = {
             'descricao': forms.Textarea(
                 attrs={
@@ -18,9 +18,6 @@ class produtoForm(forms.ModelForm):
             'required': '',
             },
             'preco': {
-            'required': '',
-            },
-            'quantidade': {
             'required': '',
             },
         }
