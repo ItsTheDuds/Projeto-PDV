@@ -49,7 +49,7 @@ class Migration(migrations.Migration):
                 ('recebimento', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='aplicacoes', to='fiado.recebimentofiado')),
             ],
             options={
-                'ordering': ['fiado__venda__criada_em', 'fiado_id'],
+                'ordering': ['id'],
             },
         ),
         migrations.RunPython(preencher_valor_pago, migrations.RunPython.noop),
