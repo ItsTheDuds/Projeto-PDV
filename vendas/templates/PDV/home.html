@@ -306,10 +306,10 @@
                     onclick="adicionarProduto('{{ produto.id }}', '{{ produto.nome|escapejs }}', '{{ produto.preco }}', '{{ produto.quantidade }}')">
                 <strong style="font-size:1.05rem;">{{ produto.nome }}</strong>
                 <div class="money" style="margin:.5rem 0;">R$ {{ produto.preco }}</div>
-                <small class="muted">ID: #{{ produto.id }} · Estoque: {{ produto.quantidade }}</small>
+                <small class="muted">ID: #{{ produto.id }}</small>
             </button>
             {% empty %}
-            <p>Nenhum produto disponível em estoque.</p>
+            <p>Nenhum produto disponível.</p>
             {% endfor %}
         </div>
     </div>
