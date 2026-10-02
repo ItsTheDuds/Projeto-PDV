@@ -17,7 +17,7 @@ from .models import (
 
 
 def _decimal_pagamento(valor):
-    texto = str(valor or '').strip().replace('.', '').replace(',', '.')
+    texto = str(valor or '').strip().replace(',', '.')
     try:
         return Decimal(texto).quantize(Decimal('0.01'))
     except (InvalidOperation, ValueError):
