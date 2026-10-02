@@ -54,8 +54,8 @@ fi
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
 
-STAMP="$(TZ="$BACKUP_TIMEZONE" date +%Y-%m-%d_%H%M%S)"
-DEST="$BACKUP_DIR/aguiacafe_$STAMP.dump"
+STAMP="$(TZ="$BACKUP_TIMEZONE" date +%Y-%m-%d_%Hh%Mm%S)"
+DEST="$BACKUP_DIR/aguiacafe_${STAMP}_Brasilia.dump"
 TMP="$DEST.tmp"
 
 cleanup() {
