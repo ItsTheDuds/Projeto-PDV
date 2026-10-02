@@ -55,11 +55,33 @@
     }
     .painel-carrinho {
         min-width: 0;
+        position: sticky;
+        top: 1rem;
     }
     .carrinho-lista {
         display: grid;
         gap: .7rem;
         margin: 1rem 0;
+        max-height: 360px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: .35rem;
+        scrollbar-gutter: stable;
+    }
+    .carrinho-lista::-webkit-scrollbar {
+        width: 10px;
+    }
+    .carrinho-lista::-webkit-scrollbar-track {
+        background: #f3e5d8;
+        border-radius: 999px;
+    }
+    .carrinho-lista::-webkit-scrollbar-thumb {
+        background: #c96a1b;
+        border-radius: 999px;
+        border: 2px solid #f3e5d8;
+    }
+    .carrinho-lista::-webkit-scrollbar-thumb:hover {
+        background: #a94f0e;
     }
     .carrinho-item {
         border: 1px solid #dee2e6;
@@ -194,6 +216,7 @@
         }
         .painel-carrinho {
             max-width: none;
+            position: static;
         }
     }
     @media (max-width: 800px) {
