@@ -421,7 +421,8 @@ function mudarQuantidade(id, delta) {
 function alterarPreco(id, valor) {
     const item = carrinho.find(item => item.produto_id === Number(id));
     if (!item) return;
-    item.preco_unitario = Math.max(0, numero(valor) || 0);
+    const novoPreco = numero(valor);
+    item.preco_unitario = Number.isFinite(novoPreco) ? novoPreco : 0;
     atualizarCarrinho();
 }
 
@@ -460,7 +461,7 @@ function atualizarCarrinho() {
                         <label>Preço unitário</label>
                         <input class="preco-venda"
                                type="number"
-                               min="0"
+                               min="0.01"
                                step="0.01"
                                value="${item.preco_unitario.toFixed(2)}"
                                onwheel="this.blur()"
@@ -553,6 +554,23 @@ async function finalizarVenda() {
 
     if (forma === 'FIADO' && !clienteId) {
         erro.innerText = 'Pesquise e selecione o cliente da venda fiada.';
+        erro.style.display = 'block';
+        return;
+    }
+
+    const itemSemValor = carrinho.find(item => item.preco_unitario <= 0);
+    if (itemSemValor) {
+        erro.innerText = 'O preço de ' + itemSemValor.nome + ' deve ser maior que R$ 0,00.';
+        erro.style.display = 'block';
+        return;
+    }
+
+    const totalVenda = carrinho.reduce(
+        (soma, item) => soma + (item.preco_unitario * item.quantidade),
+        0
+    );
+    if (totalVenda <= 0) {
+        erro.innerText = 'O total da venda deve ser maior que R$ 0,00.';
         erro.style.display = 'block';
         return;
     }
