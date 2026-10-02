@@ -23,7 +23,7 @@
                     <th>CELULAR</th>
                     <th>E-MAIL</th>
                     <th>SALDO DEVEDOR</th>
-                    <th class="text-center">HISTÓRICO</th>
+                    <th class="text-center">FIADO</th>
                     <th class="text-center">EDITAR</th>
                     <th class="text-center">REMOVER</th>
                 </tr>
@@ -38,7 +38,7 @@
                         R$ {{ cliente.saldo_devedor|floatformat:2 }}
                     </td>
                     <td class="text-center">
-                        <a href="{% url 'fiado:cliente_historico' cliente.id %}" class="btn btn-primary btn-sm">Ver fiado</a>
+                        <a href="{% url 'fiado:cliente_historico' cliente.id %}?origem=clientes" class="btn btn-primary btn-sm">Conta fiada</a>
                     </td>
                     <td class="text-center">
                         <a href="{% url 'clientes:editar' cliente.id %}" class="btn btn-warning btn-sm">Editar</a>
