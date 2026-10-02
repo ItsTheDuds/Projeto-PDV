@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.db.models import DecimalField, F, Q, Sum, Value
 from django.db.models.deletion import ProtectedError
 from django.db.models.functions import Coalesce
+from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import ClienteForm
@@ -39,8 +40,9 @@ def _com_saldo(queryset):
 
 
 def home(request):
-    clientes = _com_saldo(Cliente.objects.all())
-    return render(request, 'clientes/home.html', {'clientes': clientes})
+    clientes = _com_saldo(Cliente.objects.all()).order_by('nome', 'id')
+    pagina = Paginator(clientes, 20).get_page(request.GET.get('page'))
+    return render(request, 'clientes/home.html', {'clientes': pagina})
 
 
 def adicionar(request):
