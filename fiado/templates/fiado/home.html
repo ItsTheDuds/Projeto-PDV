@@ -7,7 +7,7 @@
     <div class="page-header">
         <div>
             <h1 class="page-title">Fiado — em aberto</h1>
-            <p class="subtitle">Clientes que possuem compras pendentes.</p>
+            <p class="subtitle">Receba por cliente, com pagamento parcial ou quitação total.</p>
         </div>
         <div class="actions no-print">
             {% if pode_configurar_senha %}
@@ -22,7 +22,7 @@
 
     {% if not senha_configurada %}
     <div class="alert alert-warning">
-        Nenhuma senha de quitação foi cadastrada. Cadastre uma senha antes de marcar compras como pagas.
+        Nenhuma senha de quitação foi cadastrada. Cadastre uma senha antes de registrar recebimentos.
     </div>
     {% endif %}
 
@@ -37,24 +37,27 @@
                 <tr>
                     <th>CLIENTE</th>
                     <th>CELULAR</th>
-                    <th>VENDA</th>
-                    <th>DATA</th>
-                    <th>VALOR</th>
-                    <th class="text-center">PEDIDO</th>
+                    <th>COMPRAS EM ABERTO</th>
+                    <th>SALDO</th>
+                    <th class="text-center">AÇÕES</th>
                 </tr>
             </thead>
             <tbody>
-                {% for fiado in fiados %}
+                {% for item in clientes_em_aberto %}
                 <tr>
-                    <td><strong>{{ fiado.venda.cliente.nome }}</strong></td>
-                    <td>{{ fiado.venda.cliente.celular_formatado }}</td>
-                    <td>#{{ fiado.venda.id }}</td>
-                    <td>{{ fiado.venda.criada_em|date:"d/m/Y H:i" }}</td>
-                    <td class="money money-open">R$ {{ fiado.venda.total|floatformat:2 }}</td>
-                    <td class="text-center"><a href="{% url 'fiado:detalhe' fiado.id %}" class="btn btn-primary btn-sm">Visualizar</a></td>
+                    <td><strong>{{ item.cliente.nome }}</strong></td>
+                    <td>{{ item.cliente.celular_formatado }}</td>
+                    <td>{{ item.quantidade_compras }}</td>
+                    <td class="money money-open">R$ {{ item.saldo|floatformat:2 }}</td>
+                    <td class="text-center">
+                        <div class="actions" style="justify-content:center;">
+                            <a href="{% url 'fiado:cliente_historico' item.cliente.id %}" class="btn btn-outline btn-sm">Histórico</a>
+                            <a href="{% url 'fiado:receber_cliente' item.cliente.id %}" class="btn btn-success btn-sm">Receber</a>
+                        </div>
+                    </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="6">Nenhum fiado em aberto.</td></tr>
+                <tr><td colspan="5">Nenhum fiado em aberto.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
