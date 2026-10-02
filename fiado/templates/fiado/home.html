@@ -51,8 +51,8 @@
                     <td class="money money-open">R$ {{ item.saldo|floatformat:2 }}</td>
                     <td class="text-center">
                         <div class="actions" style="justify-content:center;">
-                            <a href="{% url 'fiado:cliente_historico' item.cliente.id %}" class="btn btn-outline btn-sm">Histórico</a>
-                            <a href="{% url 'fiado:receber_cliente' item.cliente.id %}" class="btn btn-success btn-sm">Receber</a>
+                            <a href="{% url 'fiado:cliente_historico' item.cliente.id %}?origem=fiado" class="btn btn-outline btn-sm">Conta</a>
+                            <a href="{% url 'fiado:receber_cliente' item.cliente.id %}?origem=fiado" class="btn btn-success btn-sm">Receber</a>
                         </div>
                     </td>
                 </tr>
