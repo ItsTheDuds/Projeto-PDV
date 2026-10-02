@@ -15,7 +15,7 @@ from .models import ItemVenda, Venda
 
 
 def home(request):
-    produtos = produtosModel.objects.filter(quantidade__gt=0).order_by('nome')
+    produtos = produtosModel.objects.all().order_by('nome')
     clientes = Cliente.objects.all().order_by('nome')
 
     venda_finalizada = None
@@ -154,12 +154,7 @@ def finalizar(request):
                 if quantidade <= 0:
                     raise ValueError('Quantidade inválida.')
 
-                produto = produtosModel.objects.select_for_update().get(id=produto_id)
-
-                if produto.quantidade < quantidade:
-                    raise ValueError(
-                        f'Estoque insuficiente para {produto.nome}. Disponível: {produto.quantidade}.'
-                    )
+                produto = produtosModel.objects.get(id=produto_id)
 
                 preco_informado = item.get('preco_unitario')
                 if preco_informado in (None, ''):
@@ -185,8 +180,6 @@ def finalizar(request):
                     subtotal=subtotal,
                 )
 
-                produto.quantidade -= quantidade
-                produto.save(update_fields=['quantidade'])
                 total += subtotal
 
             if total <= 0:
