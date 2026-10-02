@@ -6,7 +6,7 @@
 <div class="card">
     <div class="page-header">
         <div>
-            <h1 class="page-title">Histórico de {{ cliente.nome }}</h1>
+            <h1 class="page-title">Conta fiada de {{ cliente.nome }}</h1>
             <p class="subtitle">{{ cliente.celular_formatado }}{% if cliente.email %} — {{ cliente.email }}{% endif %}</p>
         </div>
         <div class="text-right">
@@ -19,7 +19,7 @@
 
     {% if saldo > 0 %}
     <div class="actions no-print" style="justify-content:flex-end; margin-bottom:1.25rem;">
-        <a href="{% url 'fiado:receber_cliente' cliente.id %}" class="btn btn-success">Receber pagamento</a>
+        <a href="{% url 'fiado:receber_cliente' cliente.id %}?origem={{ origem }}" class="btn btn-success">Receber pagamento</a>
     </div>
     {% endif %}
 
@@ -57,7 +57,7 @@
                         {% endif %}
                     </td>
                     <td class="text-center">
-                        <a href="{% url 'fiado:detalhe' fiado.id %}" class="btn btn-primary btn-sm">Visualizar</a>
+                        <a href="{% url 'fiado:detalhe' fiado.id %}?origem={{ origem }}" class="btn btn-primary btn-sm">Detalhes</a>
                     </td>
                 </tr>
                 {% empty %}
@@ -100,7 +100,11 @@
     </div>
 
     <div class="actions no-print" style="margin-top:1rem;">
-        <a href="{% url 'fiado:home' %}" class="btn btn-light">Voltar ao Fiado</a>
+        {% if origem == 'clientes' %}
+            <a href="{% url 'clientes:home' %}" class="btn btn-light">Voltar aos Clientes</a>
+        {% else %}
+            <a href="{% url 'fiado:home' %}" class="btn btn-light">Voltar ao Fiado</a>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
