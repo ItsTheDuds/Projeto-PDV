@@ -106,10 +106,10 @@
 
         <div class="form-actions">
             <button
+                id="abrirPagarTudo"
                 type="button"
-                class="btn btn-warning"
-                onclick="preencherSaldoTotal()">
-                Preencher saldo total — R$ {{ saldo_total|floatformat:2 }}
+                class="btn btn-warning">
+                PAGAR TUDO — R$ {{ saldo_total|floatformat:2 }}
             </button>
             <button type="submit" class="btn btn-success">Confirmar recebimento</button>
         </div>
@@ -193,15 +193,70 @@
         </div>
     </div>
 </div>
+
+<div id="modalPagarTudo" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalPagarTudoTitulo">
+    <div class="modal-confirmacao">
+        <h2 id="modalPagarTudoTitulo">Quitar saldo total</h2>
+        <p class="muted" style="margin-top:0;">
+            Esta ação vai zerar todo o saldo em aberto de {{ cliente.nome }}.
+        </p>
+
+        <div class="alert alert-warning">
+            <strong>QUITAÇÃO TOTAL</strong><br>
+            Valor a receber: <strong>R$ {{ saldo_total|floatformat:2 }}</strong>
+        </div>
+
+        <form method="post" id="formPagarTudo">
+            {% csrf_token %}
+            <input type="hidden" name="origem" value="{{ origem }}">
+            <input type="hidden" name="valor" value="{{ saldo_total|floatformat:2 }}">
+
+            <div style="margin-bottom:1rem;">
+                <label for="senhaPagarTudo">Senha de quitação</label>
+                <input
+                    id="senhaPagarTudo"
+                    name="senha"
+                    type="password"
+                    autocomplete="off"
+                    placeholder="Digite a senha para confirmar"
+                    required>
+            </div>
+
+            <div class="modal-acoes">
+                <button id="cancelarPagarTudo" type="button" class="btn btn-light">Cancelar</button>
+                <button type="submit" class="btn btn-warning">
+                    Confirmar quitação de R$ {{ saldo_total|floatformat:2 }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-function preencherSaldoTotal() {
-    const valor = document.getElementById('valor');
-    valor.value = '{{ saldo_total|floatformat:2 }}'.replace(',', '.');
-    document.getElementById('senha').focus();
+const abrirPagarTudo = document.getElementById('abrirPagarTudo');
+const modalPagarTudo = document.getElementById('modalPagarTudo');
+const cancelarPagarTudo = document.getElementById('cancelarPagarTudo');
+const senhaPagarTudo = document.getElementById('senhaPagarTudo');
+
+function fecharModalPagarTudo() {
+    modalPagarTudo.classList.remove('ativo');
+    senhaPagarTudo.value = '';
 }
+
+abrirPagarTudo.addEventListener('click', function () {
+    modalPagarTudo.classList.add('ativo');
+    senhaPagarTudo.focus();
+});
+
+cancelarPagarTudo.addEventListener('click', fecharModalPagarTudo);
+
+modalPagarTudo.addEventListener('click', function (event) {
+    if (event.target === modalPagarTudo) {
+        fecharModalPagarTudo();
+    }
+});
 
 const formRecebimento = document.getElementById('formRecebimento');
 const modalConfirmacao = document.getElementById('modalConfirmacao');
@@ -256,8 +311,14 @@ modalConfirmacao.addEventListener('click', function (event) {
 });
 
 document.addEventListener('keydown', function (event) {
-    if (event.key === 'Escape' && modalConfirmacao.classList.contains('ativo')) {
+    if (event.key !== 'Escape') return;
+
+    if (modalConfirmacao.classList.contains('ativo')) {
         fecharModalConfirmacao();
+    }
+
+    if (modalPagarTudo.classList.contains('ativo')) {
+        fecharModalPagarTudo();
     }
 });
 
