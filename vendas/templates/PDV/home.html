@@ -302,8 +302,7 @@
                     data-nome="{{ produto.nome|lower }}"
                     data-label="{{ produto.nome|escapejs }}"
                     data-preco="{{ produto.preco }}"
-                    data-estoque="{{ produto.quantidade }}"
-                    onclick="adicionarProduto('{{ produto.id }}', '{{ produto.nome|escapejs }}', '{{ produto.preco }}', '{{ produto.quantidade }}')">
+                    onclick="adicionarProduto('{{ produto.id }}', '{{ produto.nome|escapejs }}', '{{ produto.preco }}')">
                 <strong style="font-size:1.05rem;">{{ produto.nome }}</strong>
                 <div class="money" style="margin:.5rem 0;">R$ {{ produto.preco }}</div>
                 <small class="muted">ID: #{{ produto.id }}</small>
@@ -382,22 +381,18 @@ function dinheiro(valor) {
     return 'R$ ' + Number(valor).toFixed(2).replace('.', ',');
 }
 
-function adicionarProduto(id, nome, preco, estoque) {
+function adicionarProduto(id, nome, preco) {
     const produtoId = Number(id);
-    const limite = Number(estoque);
     const existente = carrinho.find(item => item.produto_id === produtoId);
 
     if (existente) {
-        if (existente.quantidade < limite) {
-            existente.quantidade++;
-        }
+        existente.quantidade++;
     } else {
         carrinho.push({
             produto_id: produtoId,
             nome,
             preco_unitario: numero(preco),
-            quantidade: 1,
-            estoque: limite
+            quantidade: 1
         });
     }
 
@@ -414,7 +409,7 @@ function mudarQuantidade(id, delta) {
         return;
     }
 
-    item.quantidade = Math.min(novaQuantidade, item.estoque);
+    item.quantidade = novaQuantidade;
     atualizarCarrinho();
 }
 
@@ -636,8 +631,7 @@ buscaProduto.addEventListener('keydown', function (event) {
     adicionarProduto(
         card.dataset.id,
         card.dataset.label,
-        card.dataset.preco,
-        card.dataset.estoque
+        card.dataset.preco
     );
 
     this.value = '';
