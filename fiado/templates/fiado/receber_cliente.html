@@ -2,6 +2,64 @@
 
 {% block title %}Receber Fiado{% endblock %}
 
+{% block extra_head %}
+<style>
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        background: rgba(0, 0, 0, .45);
+        padding: 1rem;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-overlay.ativo {
+        display: flex;
+    }
+    .modal-confirmacao {
+        width: min(520px, 100%);
+        background: #fff;
+        border-radius: .6rem;
+        box-shadow: 0 1rem 2.5rem rgba(0,0,0,.25);
+        padding: 1.4rem;
+    }
+    .modal-confirmacao h2 {
+        margin: 0 0 .35rem;
+    }
+    .resumo-recebimento {
+        display: grid;
+        gap: .55rem;
+        margin: 1.2rem 0;
+        padding: 1rem;
+        border: 1px solid #dee2e6;
+        border-radius: .45rem;
+        background: #f8f9fa;
+    }
+    .resumo-recebimento-linha {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+    .resumo-recebimento-linha strong {
+        text-align: right;
+    }
+    .aviso-quitacao-total {
+        display: none;
+        margin-bottom: 1rem;
+    }
+    .aviso-quitacao-total.ativo {
+        display: block;
+    }
+    .modal-acoes {
+        display: flex;
+        justify-content: flex-end;
+        gap: .6rem;
+        flex-wrap: wrap;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card" style="max-width:900px; margin:0 auto;">
     <div class="page-header">
@@ -99,6 +157,42 @@
         {% endif %}
     </div>
 </div>
+
+<div id="modalConfirmacao" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
+    <div class="modal-confirmacao">
+        <h2 id="modalTitulo">Confirmar recebimento</h2>
+        <p class="muted" style="margin-top:0;">Confira os valores antes de registrar o pagamento.</p>
+
+        <div id="avisoQuitacaoTotal" class="alert alert-warning aviso-quitacao-total">
+            <strong>QUITAÇÃO TOTAL</strong><br>
+            Este pagamento vai zerar o saldo em aberto do cliente.
+        </div>
+
+        <div class="resumo-recebimento">
+            <div class="resumo-recebimento-linha">
+                <span>Cliente</span>
+                <strong>{{ cliente.nome }}</strong>
+            </div>
+            <div class="resumo-recebimento-linha">
+                <span>Valor recebido</span>
+                <strong id="modalValor" class="money money-ok">R$ 0,00</strong>
+            </div>
+            <div class="resumo-recebimento-linha">
+                <span>Saldo atual</span>
+                <strong class="money money-open">R$ {{ saldo_total|floatformat:2 }}</strong>
+            </div>
+            <div class="resumo-recebimento-linha">
+                <span>Saldo após pagamento</span>
+                <strong id="modalSaldoDepois" class="money">R$ 0,00</strong>
+            </div>
+        </div>
+
+        <div class="modal-acoes">
+            <button id="cancelarConfirmacao" type="button" class="btn btn-light">Cancelar</button>
+            <button id="confirmarConfirmacao" type="button" class="btn btn-success">Confirmar recebimento</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -109,7 +203,26 @@ function preencherSaldoTotal() {
     document.getElementById('senha').focus();
 }
 
-document.getElementById('formRecebimento').addEventListener('submit', function (event) {
+const formRecebimento = document.getElementById('formRecebimento');
+const modalConfirmacao = document.getElementById('modalConfirmacao');
+const cancelarConfirmacao = document.getElementById('cancelarConfirmacao');
+const confirmarConfirmacao = document.getElementById('confirmarConfirmacao');
+const avisoQuitacaoTotal = document.getElementById('avisoQuitacaoTotal');
+let envioConfirmado = false;
+
+function moeda(valor) {
+    return 'R$ ' + Number(valor).toFixed(2).replace('.', ',');
+}
+
+function fecharModalConfirmacao() {
+    modalConfirmacao.classList.remove('ativo');
+}
+
+formRecebimento.addEventListener('submit', function (event) {
+    if (envioConfirmado) {
+        return;
+    }
+
     const valor = Number(document.getElementById('valor').value);
     const saldo = Number('{{ saldo_total|floatformat:2 }}'.replace(',', '.'));
 
@@ -117,13 +230,41 @@ document.getElementById('formRecebimento').addEventListener('submit', function (
         return;
     }
 
-    const mensagem = Math.abs(valor - saldo) < 0.005
-        ? 'Você está prestes a quitar TODO o saldo deste cliente no valor de R$ ' + saldo.toFixed(2).replace('.', ',') + '. Deseja continuar?'
-        : 'Confirmar recebimento de R$ ' + valor.toFixed(2).replace('.', ',') + '?';
+    event.preventDefault();
 
-    if (!window.confirm(mensagem)) {
-        event.preventDefault();
+    const saldoDepois = Math.max(0, saldo - valor);
+    const quitacaoTotal = Math.abs(valor - saldo) < 0.005;
+
+    document.getElementById('modalValor').innerText = moeda(valor);
+    document.getElementById('modalSaldoDepois').innerText = moeda(saldoDepois);
+    avisoQuitacaoTotal.classList.toggle('ativo', quitacaoTotal);
+
+    confirmarConfirmacao.innerText = quitacaoTotal
+        ? 'Quitar ' + moeda(valor)
+        : 'Confirmar ' + moeda(valor);
+
+    modalConfirmacao.classList.add('ativo');
+    cancelarConfirmacao.focus();
+});
+
+cancelarConfirmacao.addEventListener('click', fecharModalConfirmacao);
+
+modalConfirmacao.addEventListener('click', function (event) {
+    if (event.target === modalConfirmacao) {
+        fecharModalConfirmacao();
     }
+});
+
+document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && modalConfirmacao.classList.contains('ativo')) {
+        fecharModalConfirmacao();
+    }
+});
+
+confirmarConfirmacao.addEventListener('click', function () {
+    envioConfirmado = true;
+    fecharModalConfirmacao();
+    formRecebimento.requestSubmit();
 });
 </script>
 {% endblock %}
