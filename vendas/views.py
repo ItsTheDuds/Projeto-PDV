@@ -46,6 +46,9 @@ def home(request):
 
 @require_GET
 def resumo_periodo(request):
+    if not request.user.is_superuser:
+        return JsonResponse({'erro': 'Acesso restrito ao administrador.'}, status=403)
+
     hoje = timezone.localdate()
     tipo = request.GET.get('tipo', 'mes').strip()
 
