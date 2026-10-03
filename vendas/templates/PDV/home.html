@@ -400,6 +400,16 @@ function adicionarProduto(id, nome, preco) {
     }
 
     atualizarCarrinho();
+    limparBuscaProduto();
+}
+
+function limparBuscaProduto() {
+    const busca = document.getElementById('buscaProduto');
+    if (!busca) return;
+
+    busca.value = '';
+    busca.dispatchEvent(new Event('input'));
+    busca.focus();
 }
 
 function mudarQuantidade(id, delta) {
@@ -636,10 +646,6 @@ buscaProduto.addEventListener('keydown', function (event) {
         card.dataset.label,
         card.dataset.preco
     );
-
-    this.value = '';
-    this.dispatchEvent(new Event('input'));
-    this.focus();
 });
 
 document.addEventListener('click', function (event) {
