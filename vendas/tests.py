@@ -117,3 +117,37 @@ class VendaTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertFalse(Venda.objects.exists())
         self.assertFalse(Fiado.objects.exists())
+
+
+class ResumoVendasPermissaoTests(TestCase):
+    def setUp(self):
+        self.operador = get_user_model().objects.create_user(
+            username='operador-resumo',
+            password='senha-123',
+        )
+        self.superuser = get_user_model().objects.create_superuser(
+            username='admin-resumo',
+            email='admin-resumo@example.com',
+            password='senha-123',
+        )
+
+    def test_operador_nao_pode_acessar_resumo_de_vendas(self):
+        self.client.force_login(self.operador)
+
+        response = self.client.get(
+            reverse('vendas:resumo_periodo'),
+            {'tipo': 'mes', 'mes': '2026-10'},
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_superuser_pode_acessar_resumo_de_vendas(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(
+            reverse('vendas:resumo_periodo'),
+            {'tipo': 'mes', 'mes': '2026-10'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('total', response.json())
