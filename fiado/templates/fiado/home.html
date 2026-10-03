@@ -2,65 +2,390 @@
 
 {% block title %}Fiado{% endblock %}
 
+{% block extra_head %}
+<style>
+    main.container {
+        width: min(1500px, calc(100% - 30px));
+    }
+
+    .fiado-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 280px;
+        gap: 1.25rem;
+        align-items: start;
+    }
+
+    .resumo-vendas-card {
+        position: sticky;
+        top: 1rem;
+        padding: 1.1rem;
+    }
+
+    .resumo-vendas-titulo {
+        font-size: .82rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #6c757d;
+        margin-bottom: .35rem;
+    }
+
+    .resumo-vendas-total {
+        font-size: 1.8rem;
+        font-weight: 800;
+        line-height: 1.1;
+        color: #198754;
+        margin-bottom: .35rem;
+    }
+
+    .resumo-vendas-periodo {
+        color: #6c757d;
+        font-size: .88rem;
+        margin-bottom: 1rem;
+    }
+
+    .resumo-vendas-divisor {
+        border: 0;
+        border-top: 1px solid #dee2e6;
+        margin: 1rem 0;
+    }
+
+    .resumo-vendas-card label {
+        font-size: .86rem;
+    }
+
+    .resumo-vendas-card input,
+    .resumo-vendas-card select {
+        font-size: .92rem;
+    }
+
+    .resumo-data-grid {
+        display: grid;
+        gap: .65rem;
+    }
+
+    .resumo-vendas-erro {
+        display: none;
+        margin-top: .75rem;
+        padding: .65rem .75rem;
+        border-radius: .35rem;
+        background: #f8d7da;
+        color: #842029;
+        font-size: .85rem;
+    }
+
+    .resumo-vendas-atualizando {
+        opacity: .65;
+    }
+
+    @media (max-width: 1050px) {
+        .fiado-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .resumo-vendas-card {
+            position: static;
+            order: -1;
+        }
+
+        .resumo-data-grid.intervalo {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    @media (max-width: 560px) {
+        .resumo-data-grid.intervalo {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="card">
-    <div class="page-header">
-        <div>
-            <h1 class="page-title">Fiado — em aberto</h1>
-            <p class="subtitle">Receba por cliente, com pagamento parcial ou quitação total.</p>
+<div class="fiado-layout">
+    <div class="card">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Fiado — em aberto</h1>
+                <p class="subtitle">Receba por cliente, com pagamento parcial ou quitação total.</p>
+            </div>
+            <div class="actions no-print">
+                {% if pode_configurar_senha %}
+                <a href="{% url 'fiado:configurar_senha' %}" class="btn btn-dark">
+                    {% if senha_configurada %}Alterar / resetar senha de quitação{% else %}Cadastrar primeira senha de quitação{% endif %}
+                </a>
+                {% elif senha_configurada %}
+                <span class="badge badge-paid">Senha de quitação configurada</span>
+                {% endif %}
+            </div>
         </div>
-        <div class="actions no-print">
-            {% if pode_configurar_senha %}
-            <a href="{% url 'fiado:configurar_senha' %}" class="btn btn-dark">
-                {% if senha_configurada %}Alterar / resetar senha de quitação{% else %}Cadastrar primeira senha de quitação{% endif %}
-            </a>
-            {% elif senha_configurada %}
-            <span class="badge badge-paid">Senha de quitação configurada</span>
-            {% endif %}
+
+        {% if not senha_configurada %}
+        <div class="alert alert-warning">
+            Nenhuma senha de quitação foi cadastrada. Cadastre uma senha antes de registrar recebimentos.
+        </div>
+        {% endif %}
+
+        <form method="get" class="no-print" style="display:flex; gap:.75rem; margin-bottom:1.5rem;">
+            <input name="q" value="{{ query }}" placeholder="Buscar cliente por nome ou celular">
+            <button class="btn btn-primary" type="submit">Pesquisar</button>
+        </form>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>CLIENTE</th>
+                        <th>CELULAR</th>
+                        <th>COMPRAS EM ABERTO</th>
+                        <th>SALDO</th>
+                        <th class="text-center">AÇÕES</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in clientes_em_aberto %}
+                    <tr>
+                        <td><strong>{{ item.cliente.nome }}</strong></td>
+                        <td>{{ item.cliente.celular_formatado }}</td>
+                        <td>{{ item.quantidade_compras }}</td>
+                        <td class="money money-open">R$ {{ item.saldo|floatformat:2 }}</td>
+                        <td class="text-center">
+                            <div class="actions" style="justify-content:center;">
+                                <a href="{% url 'fiado:cliente_historico' item.cliente.id %}?origem=fiado" class="btn btn-outline btn-sm">Conta</a>
+                                <a href="{% url 'fiado:receber_cliente' item.cliente.id %}?origem=fiado" class="btn btn-success btn-sm">Receber</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5">Nenhum fiado em aberto.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 
-    {% if not senha_configurada %}
-    <div class="alert alert-warning">
-        Nenhuma senha de quitação foi cadastrada. Cadastre uma senha antes de registrar recebimentos.
-    </div>
-    {% endif %}
+    <aside class="card resumo-vendas-card no-print" aria-label="Resumo de vendas">
+        <div class="resumo-vendas-titulo">Vendas do período</div>
+        <div id="fiadoSalesTotal" class="resumo-vendas-total">R$ 0,00</div>
+        <div id="fiadoSalesPeriodLabel" class="resumo-vendas-periodo">Mês atual</div>
 
-    <form method="get" class="no-print" style="display:flex; gap:.75rem; margin-bottom:1.5rem;">
-        <input name="q" value="{{ query }}" placeholder="Buscar cliente por nome ou celular">
-        <button class="btn btn-primary" type="submit">Pesquisar</button>
-    </form>
+        <hr class="resumo-vendas-divisor">
 
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>CLIENTE</th>
-                    <th>CELULAR</th>
-                    <th>COMPRAS EM ABERTO</th>
-                    <th>SALDO</th>
-                    <th class="text-center">AÇÕES</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in clientes_em_aberto %}
-                <tr>
-                    <td><strong>{{ item.cliente.nome }}</strong></td>
-                    <td>{{ item.cliente.celular_formatado }}</td>
-                    <td>{{ item.quantidade_compras }}</td>
-                    <td class="money money-open">R$ {{ item.saldo|floatformat:2 }}</td>
-                    <td class="text-center">
-                        <div class="actions" style="justify-content:center;">
-                            <a href="{% url 'fiado:cliente_historico' item.cliente.id %}?origem=fiado" class="btn btn-outline btn-sm">Conta</a>
-                            <a href="{% url 'fiado:receber_cliente' item.cliente.id %}?origem=fiado" class="btn btn-success btn-sm">Receber</a>
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="5">Nenhum fiado em aberto.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+        <div style="margin-bottom:.8rem;">
+            <label for="fiadoSalesType">Período</label>
+            <select id="fiadoSalesType">
+                <option value="mes">Mês</option>
+                <option value="intervalo">Intervalo de dias</option>
+            </select>
+        </div>
+
+        <div id="fiadoSalesMonthWrap" class="resumo-data-grid">
+            <div>
+                <label for="fiadoSalesMonth">Mês</label>
+                <input id="fiadoSalesMonth" type="month">
+            </div>
+        </div>
+
+        <div id="fiadoSalesRangeWrap" class="resumo-data-grid intervalo" style="display:none;">
+            <div>
+                <label for="fiadoSalesStart">Data inicial</label>
+                <input id="fiadoSalesStart"
+                       type="text"
+                       inputmode="numeric"
+                       maxlength="10"
+                       placeholder="dd/mm/aaaa">
+            </div>
+            <div>
+                <label for="fiadoSalesEnd">Data final</label>
+                <input id="fiadoSalesEnd"
+                       type="text"
+                       inputmode="numeric"
+                       maxlength="10"
+                       placeholder="dd/mm/aaaa">
+            </div>
+        </div>
+
+        <div id="fiadoSalesError" class="resumo-vendas-erro"></div>
+
+        <button id="fiadoSalesApply"
+                type="button"
+                class="btn btn-primary"
+                style="width:100%; margin-top:.9rem;">
+            Atualizar total
+        </button>
+    </aside>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const card = document.querySelector('.resumo-vendas-card');
+    if (!card) return;
+
+    const totalEl = document.getElementById('fiadoSalesTotal');
+    const periodLabelEl = document.getElementById('fiadoSalesPeriodLabel');
+    const typeEl = document.getElementById('fiadoSalesType');
+    const monthEl = document.getElementById('fiadoSalesMonth');
+    const monthWrap = document.getElementById('fiadoSalesMonthWrap');
+    const rangeWrap = document.getElementById('fiadoSalesRangeWrap');
+    const startEl = document.getElementById('fiadoSalesStart');
+    const endEl = document.getElementById('fiadoSalesEnd');
+    const applyBtn = document.getElementById('fiadoSalesApply');
+    const errorEl = document.getElementById('fiadoSalesError');
+
+    function hojeIso() {
+        const agora = new Date();
+        const local = new Date(agora.getTime() - agora.getTimezoneOffset() * 60000);
+        return local.toISOString().slice(0, 10);
+    }
+
+    function mesAtual() {
+        return hojeIso().slice(0, 7);
+    }
+
+    function moeda(valor) {
+        return 'R$ ' + Number(valor).toFixed(2).replace('.', ',');
+    }
+
+    function isoParaBr(iso) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return '';
+        const [ano, mes, dia] = iso.split('-');
+        return dia + '/' + mes + '/' + ano;
+    }
+
+    function brParaIso(valor) {
+        const match = String(valor || '').trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        if (!match) return '';
+
+        const [, dia, mes, ano] = match;
+        const data = new Date(Number(ano), Number(mes) - 1, Number(dia));
+
+        if (
+            data.getFullYear() !== Number(ano) ||
+            data.getMonth() !== Number(mes) - 1 ||
+            data.getDate() !== Number(dia)
+        ) {
+            return '';
+        }
+
+        return ano + '-' + mes + '-' + dia;
+    }
+
+    function formatarDataDigitada(input) {
+        const numeros = input.value.replace(/\D/g, '').slice(0, 8);
+        let valor = numeros;
+
+        if (numeros.length > 4) {
+            valor = numeros.slice(0, 2) + '/' + numeros.slice(2, 4) + '/' + numeros.slice(4);
+        } else if (numeros.length > 2) {
+            valor = numeros.slice(0, 2) + '/' + numeros.slice(2);
+        }
+
+        input.value = valor;
+    }
+
+    function labelMes(valor) {
+        if (!/^\d{4}-\d{2}$/.test(valor || '')) return 'Mês selecionado';
+
+        const [ano, mes] = valor.split('-').map(Number);
+        return new Intl.DateTimeFormat('pt-BR', {
+            month: 'long',
+            year: 'numeric'
+        }).format(new Date(ano, mes - 1, 1));
+    }
+
+    function alternarCampos() {
+        const intervalo = typeEl.value === 'intervalo';
+        monthWrap.style.display = intervalo ? 'none' : 'grid';
+        rangeWrap.style.display = intervalo ? 'grid' : 'none';
+    }
+
+    function salvarPreferencias() {
+        try {
+            localStorage.setItem('aguiacafe.fiadoSalesPeriod', JSON.stringify({
+                tipo: typeEl.value,
+                mes: monthEl.value,
+                inicio: startEl.value,
+                fim: endEl.value
+            }));
+        } catch (e) {}
+    }
+
+    function carregarPreferencias() {
+        let dados = null;
+
+        try {
+            dados = JSON.parse(localStorage.getItem('aguiacafe.fiadoSalesPeriod') || 'null');
+        } catch (e) {}
+
+        typeEl.value = dados && dados.tipo === 'intervalo' ? 'intervalo' : 'mes';
+        monthEl.value = dados && dados.mes ? dados.mes : mesAtual();
+        startEl.value = dados && dados.inicio ? dados.inicio : isoParaBr(hojeIso());
+        endEl.value = dados && dados.fim ? dados.fim : isoParaBr(hojeIso());
+
+        alternarCampos();
+    }
+
+    async function atualizarTotal() {
+        errorEl.style.display = 'none';
+        const params = new URLSearchParams({ tipo: typeEl.value });
+
+        if (typeEl.value === 'intervalo') {
+            const inicio = brParaIso(startEl.value);
+            const fim = brParaIso(endEl.value);
+
+            if (!inicio || !fim) {
+                errorEl.innerText = 'Informe as datas no formato dd/mm/aaaa.';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            params.set('inicio', inicio);
+            params.set('fim', fim);
+        } else {
+            if (!monthEl.value) monthEl.value = mesAtual();
+            params.set('mes', monthEl.value);
+        }
+
+        card.classList.add('resumo-vendas-atualizando');
+        applyBtn.disabled = true;
+
+        try {
+            const resposta = await fetch("{% url 'vendas:resumo_periodo' %}?" + params.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const dados = await resposta.json();
+
+            if (!resposta.ok) {
+                throw new Error(dados.erro || 'Não foi possível calcular o total.');
+            }
+
+            totalEl.innerText = moeda(dados.total);
+
+            if (dados.tipo === 'intervalo') {
+                periodLabelEl.innerText = isoParaBr(dados.inicio) + ' até ' + isoParaBr(dados.fim);
+            } else {
+                periodLabelEl.innerText = labelMes(monthEl.value);
+            }
+
+            salvarPreferencias();
+        } catch (erro) {
+            errorEl.innerText = erro.message;
+            errorEl.style.display = 'block';
+        } finally {
+            card.classList.remove('resumo-vendas-atualizando');
+            applyBtn.disabled = false;
+        }
+    }
+
+    typeEl.addEventListener('change', alternarCampos);
+    startEl.addEventListener('input', function () { formatarDataDigitada(startEl); });
+    endEl.addEventListener('input', function () { formatarDataDigitada(endEl); });
+    applyBtn.addEventListener('click', atualizarTotal);
+
+    carregarPreferencias();
+    atualizarTotal();
+})();
+</script>
 {% endblock %}
