@@ -224,3 +224,32 @@ class RecebimentoClienteTests(TestCase):
             ),
             Decimal('0.00'),
         )
+
+
+class PainelResumoVendasPermissaoTests(TestCase):
+    def setUp(self):
+        self.operador = get_user_model().objects.create_user(
+            username='operador-painel',
+            password='senha-123',
+        )
+        self.superuser = get_user_model().objects.create_superuser(
+            username='admin-painel',
+            email='admin-painel@example.com',
+            password='senha-123',
+        )
+
+    def test_operador_nao_ve_painel_resumo_vendas(self):
+        self.client.force_login(self.operador)
+
+        response = self.client.get(reverse('fiado:home'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'Vendas do período')
+
+    def test_superuser_ve_painel_resumo_vendas(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(reverse('fiado:home'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Vendas do período')
