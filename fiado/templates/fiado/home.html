@@ -15,6 +15,10 @@
         align-items: start;
     }
 
+    .fiado-layout.sem-resumo {
+        grid-template-columns: 1fr;
+    }
+
     .resumo-vendas-card {
         position: sticky;
         top: 1rem;
@@ -102,7 +106,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="fiado-layout">
+<div class="fiado-layout{% if not user.is_superuser %} sem-resumo{% endif %}">
     <div class="card">
         <div class="page-header">
             <div>
@@ -164,6 +168,7 @@
         </div>
     </div>
 
+    {% if user.is_superuser %}
     <aside class="card resumo-vendas-card no-print" aria-label="Resumo de vendas">
         <div class="resumo-vendas-titulo">Vendas do período</div>
         <div id="fiadoSalesTotal" class="resumo-vendas-total">R$ 0,00</div>
@@ -214,6 +219,7 @@
             Atualizar total
         </button>
     </aside>
+    {% endif %}
 </div>
 {% endblock %}
 
