@@ -14,18 +14,6 @@
         .navbar-back { display:inline-block; background: #dc3545; color: #fff; border: 1px solid #dc3545; border-radius: .35rem; padding: .42rem .7rem; cursor: pointer; font: inherit; font-weight: 600; text-decoration:none; }
         .navbar-back:hover { background: #bb2d3b; border-color: #b02a37; }
         .navbar-user { display: flex; align-items: center; gap: .75rem; color: #fff; font-size: .92rem; }
-        .sales-summary { position: relative; display:flex; align-items:center; gap:.55rem; }
-        .sales-summary-button { background:#343a40; color:#fff; border:1px solid #6c757d; border-radius:.35rem; padding:.45rem .7rem; cursor:pointer; font:inherit; display:flex; align-items:center; gap:.45rem; }
-        .sales-summary-button:hover { background:#3f474e; }
-        .sales-summary-label { color:#adb5bd; font-size:.78rem; }
-        .sales-summary-value { font-weight:700; white-space:nowrap; }
-        .sales-summary-popover { display:none; position:absolute; right:0; top:calc(100% + .55rem); z-index:3000; width:min(420px, calc(100vw - 30px)); background:#fff; color:#212529; border:1px solid #ced4da; border-radius:.5rem; box-shadow:0 .75rem 1.5rem rgba(0,0,0,.2); padding:1rem; }
-        .sales-summary-popover.ativo { display:block; }
-        .sales-summary-popover h3 { margin:0 0 .8rem; font-size:1rem; }
-        .sales-period-grid { display:grid; grid-template-columns:1fr 1fr; gap:.65rem; }
-        .sales-period-grid .full { grid-column:1 / -1; }
-        .sales-period-actions { display:flex; justify-content:flex-end; gap:.5rem; margin-top:.8rem; }
-        .sales-period-error { display:none; color:#842029; background:#f8d7da; border-radius:.35rem; padding:.55rem .7rem; margin-top:.7rem; }
         .logout-form { margin: 0; }
         .logout-button { background: transparent; color: #fff; border: 1px solid #6c757d; border-radius: .35rem; padding: .42rem .7rem; cursor: pointer; font: inherit; }
         .logout-button:hover { background: #343a40; }
@@ -72,8 +60,7 @@
         .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         @media (max-width: 800px) {
             .grid-2, .grid-3 { grid-template-columns: 1fr; }
-            .sales-summary-label { display:none; }
-            .sales-summary-button { padding:.42rem .55rem; }
+            .navbar-user span { display: none; }
         }
         @media print {
             .navbar, .no-print, .messages { display: none !important; }
@@ -95,49 +82,7 @@
             {% endif %}
         </div>
         <div class="navbar-user">
-            <div class="sales-summary">
-                <button id="salesSummaryButton" type="button" class="sales-summary-button" aria-expanded="false">
-                    <span class="sales-summary-label">Vendas do período</span>
-                    <span id="salesSummaryValue" class="sales-summary-value">R$ 0,00</span>
-                </button>
-
-                <div id="salesSummaryPopover" class="sales-summary-popover">
-                    <h3>Período das vendas</h3>
-
-                    <div class="sales-period-grid">
-                        <div class="full">
-                            <label for="salesPeriodType">Tipo de período</label>
-                            <select id="salesPeriodType">
-                                <option value="mes">Mês</option>
-                                <option value="intervalo">Intervalo de dias</option>
-                            </select>
-                        </div>
-
-                        <div id="salesMonthWrap" class="full">
-                            <label for="salesMonth">Mês</label>
-                            <input id="salesMonth" type="month">
-                        </div>
-
-                        <div id="salesStartWrap" style="display:none;">
-                            <label for="salesStart">Data inicial</label>
-                            <input id="salesStart" type="date">
-                        </div>
-
-                        <div id="salesEndWrap" style="display:none;">
-                            <label for="salesEnd">Data final</label>
-                            <input id="salesEnd" type="date">
-                        </div>
-                    </div>
-
-                    <div id="salesPeriodError" class="sales-period-error"></div>
-
-                    <div class="sales-period-actions">
-                        <button id="salesPeriodClose" type="button" class="btn btn-light btn-sm">Fechar</button>
-                        <button id="salesPeriodApply" type="button" class="btn btn-primary btn-sm">Aplicar período</button>
-                    </div>
-                </div>
-            </div>
-
+            <span>{{ user.username }}</span>
             <form method="post" action="{% url 'logout' %}" class="logout-form">
                 {% csrf_token %}
                 <button type="submit" class="logout-button">Sair</button>
@@ -156,136 +101,6 @@
     {% endif %}
     {% block content %}{% endblock %}
 </main>
-<script>
-(function () {
-    const button = document.getElementById('salesSummaryButton');
-    if (!button) return;
-
-    const popover = document.getElementById('salesSummaryPopover');
-    const valueEl = document.getElementById('salesSummaryValue');
-    const typeEl = document.getElementById('salesPeriodType');
-    const monthEl = document.getElementById('salesMonth');
-    const startEl = document.getElementById('salesStart');
-    const endEl = document.getElementById('salesEnd');
-    const monthWrap = document.getElementById('salesMonthWrap');
-    const startWrap = document.getElementById('salesStartWrap');
-    const endWrap = document.getElementById('salesEndWrap');
-    const applyBtn = document.getElementById('salesPeriodApply');
-    const closeBtn = document.getElementById('salesPeriodClose');
-    const errorEl = document.getElementById('salesPeriodError');
-
-    function hojeLocal() {
-        const agora = new Date();
-        const local = new Date(agora.getTime() - agora.getTimezoneOffset() * 60000);
-        return local.toISOString().slice(0, 10);
-    }
-
-    function mesAtual() {
-        return hojeLocal().slice(0, 7);
-    }
-
-    function moeda(valor) {
-        return 'R$ ' + Number(valor).toFixed(2).replace('.', ',');
-    }
-
-    function alternarCampos() {
-        const intervalo = typeEl.value === 'intervalo';
-        monthWrap.style.display = intervalo ? 'none' : 'block';
-        startWrap.style.display = intervalo ? 'block' : 'none';
-        endWrap.style.display = intervalo ? 'block' : 'none';
-    }
-
-    function salvarPreferencias() {
-        try {
-            localStorage.setItem('aguiacafe.salesPeriod', JSON.stringify({
-                tipo: typeEl.value,
-                mes: monthEl.value,
-                inicio: startEl.value,
-                fim: endEl.value
-            }));
-        } catch (e) {}
-    }
-
-    function carregarPreferencias() {
-        let dados = null;
-        try {
-            dados = JSON.parse(localStorage.getItem('aguiacafe.salesPeriod') || 'null');
-        } catch (e) {}
-
-        typeEl.value = dados && dados.tipo === 'intervalo' ? 'intervalo' : 'mes';
-        monthEl.value = dados && dados.mes ? dados.mes : mesAtual();
-        startEl.value = dados && dados.inicio ? dados.inicio : hojeLocal();
-        endEl.value = dados && dados.fim ? dados.fim : hojeLocal();
-        alternarCampos();
-    }
-
-    async function atualizarResumo() {
-        errorEl.style.display = 'none';
-        const params = new URLSearchParams({ tipo: typeEl.value });
-
-        if (typeEl.value === 'intervalo') {
-            if (!startEl.value || !endEl.value) {
-                errorEl.innerText = 'Informe a data inicial e a data final.';
-                errorEl.style.display = 'block';
-                return false;
-            }
-            params.set('inicio', startEl.value);
-            params.set('fim', endEl.value);
-        } else {
-            if (!monthEl.value) monthEl.value = mesAtual();
-            params.set('mes', monthEl.value);
-        }
-
-        try {
-            const resposta = await fetch("{% url 'vendas:resumo_periodo' %}?" + params.toString(), {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            });
-            const dados = await resposta.json();
-
-            if (!resposta.ok) {
-                throw new Error(dados.erro || 'Não foi possível calcular o total.');
-            }
-
-            valueEl.innerText = moeda(dados.total);
-            salvarPreferencias();
-            return true;
-        } catch (erro) {
-            errorEl.innerText = erro.message;
-            errorEl.style.display = 'block';
-            return false;
-        }
-    }
-
-    button.addEventListener('click', function () {
-        const ativo = popover.classList.toggle('ativo');
-        button.setAttribute('aria-expanded', ativo ? 'true' : 'false');
-    });
-
-    closeBtn.addEventListener('click', function () {
-        popover.classList.remove('ativo');
-        button.setAttribute('aria-expanded', 'false');
-    });
-
-    typeEl.addEventListener('change', alternarCampos);
-
-    applyBtn.addEventListener('click', async function () {
-        if (await atualizarResumo()) {
-            popover.classList.remove('ativo');
-            button.setAttribute('aria-expanded', 'false');
-        }
-    });
-
-    document.addEventListener('click', function (event) {
-        if (!popover.contains(event.target) && !button.contains(event.target)) {
-            popover.classList.remove('ativo');
-            button.setAttribute('aria-expanded', 'false');
-        }
-    });
-
-    carregarPreferencias();
-    atualizarResumo();
-})();
-</script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>
