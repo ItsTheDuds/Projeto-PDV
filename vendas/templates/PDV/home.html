@@ -633,11 +633,21 @@ buscaProduto.addEventListener('keydown', function (event) {
 
     event.preventDefault();
 
-    const idDigitado = this.value.trim().replace(/^#/, '');
-    if (!/^\d+$/.test(idDigitado)) return;
+    const termoDigitado = this.value.trim();
+    if (!termoDigitado) return;
 
-    const card = Array.from(document.querySelectorAll('.produto-card'))
-        .find(item => item.dataset.id === idDigitado);
+    const cards = Array.from(document.querySelectorAll('.produto-card'));
+    const idDigitado = termoDigitado.replace(/^#/, '');
+
+    let card = null;
+
+    if (/^\d+$/.test(idDigitado)) {
+        card = cards.find(item => item.dataset.id === idDigitado);
+    }
+
+    if (!card) {
+        card = cards.find(item => item.style.display !== 'none');
+    }
 
     if (!card) return;
 
