@@ -1,6 +1,5 @@
+import re
 from datetime import datetime
-import re
-import re
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
