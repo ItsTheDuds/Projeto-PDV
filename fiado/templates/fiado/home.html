@@ -34,13 +34,41 @@
         margin-bottom: .35rem;
     }
 
-    .resumo-vendas-total {
-        font-size: 1.8rem;
+    .resumo-vendas-valor-principal {
+        font-size: 2rem;
         font-weight: 800;
-        line-height: 1.1;
+        line-height: 1.15;
         color: #198754;
-        margin-bottom: .35rem;
+        margin-bottom: 1rem;
+        overflow-wrap: anywhere;
     }
+
+    .resumo-vendas-metricas {
+        display: grid;
+        gap: .8rem;
+        margin-bottom: .9rem;
+    }
+
+    .resumo-vendas-metrica {
+        padding: .65rem .75rem;
+        background: #f8f9fa;
+        border-radius: .4rem;
+        border: 1px solid #e9ecef;
+    }
+
+    .resumo-vendas-metrica .resumo-vendas-titulo {
+        margin-bottom: .2rem;
+    }
+
+    .resumo-vendas-valor-secundario {
+        font-size: 1.35rem;
+        font-weight: 750;
+        line-height: 1.2;
+        overflow-wrap: anywhere;
+    }
+
+    .resumo-vendas-aberto { color: #dc3545; }
+    .resumo-vendas-geral { color: #212529; }
 
     .resumo-vendas-periodo {
         color: #6c757d;
@@ -170,9 +198,21 @@
 
     {% if user.is_superuser %}
     <aside class="card resumo-vendas-card no-print" aria-label="Resumo de vendas">
-        <div class="resumo-vendas-titulo">Vendas do período</div>
-        <div id="fiadoSalesTotal" class="resumo-vendas-total">R$ 0,00</div>
+        <div class="resumo-vendas-titulo">Vendido</div>
+        <div id="fiadoSalesVendido" class="resumo-vendas-valor-principal">R$ 0,00</div>
+
+        <div class="resumo-vendas-metricas">
+            <div class="resumo-vendas-metrica">
+                <div class="resumo-vendas-titulo">Em aberto</div>
+                <div id="fiadoSalesEmAberto" class="resumo-vendas-valor-secundario resumo-vendas-aberto">R$ 0,00</div>
+            </div>
+            <div class="resumo-vendas-metrica">
+                <div class="resumo-vendas-titulo">Total</div>
+                <div id="fiadoSalesTotal" class="resumo-vendas-valor-secundario resumo-vendas-geral">R$ 0,00</div>
+            </div>
+        </div>
         <div id="fiadoSalesPeriodLabel" class="resumo-vendas-periodo">Mês atual</div>
+        <small class="muted" style="display:block; line-height:1.35;">Vendido = valor já pago. Total = vendido + saldo em aberto das vendas do período.</small>
 
         <hr class="resumo-vendas-divisor">
 
@@ -229,6 +269,8 @@
     const card = document.querySelector('.resumo-vendas-card');
     if (!card) return;
 
+    const vendidoEl = document.getElementById('fiadoSalesVendido');
+    const emAbertoEl = document.getElementById('fiadoSalesEmAberto');
     const totalEl = document.getElementById('fiadoSalesTotal');
     const periodLabelEl = document.getElementById('fiadoSalesPeriodLabel');
     const typeEl = document.getElementById('fiadoSalesType');
@@ -367,6 +409,8 @@
                 throw new Error(dados.erro || 'Não foi possível calcular o total.');
             }
 
+            vendidoEl.innerText = moeda(dados.vendido);
+            emAbertoEl.innerText = moeda(dados.em_aberto);
             totalEl.innerText = moeda(dados.total);
 
             if (dados.tipo === 'intervalo') {
