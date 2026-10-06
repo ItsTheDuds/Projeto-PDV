@@ -1,3 +1,5 @@
+from datetime import datetime
+import re
 import re
 from decimal import Decimal, InvalidOperation
 
@@ -322,15 +324,73 @@ def cliente_historico(request, cliente_id):
 
 @require_GET
 def imprimir_cliente(request, cliente_id):
-    """Extrato térmico de todas as compras fiadas do cliente (sem alterar dados)."""
+    """Permite selecionar compras por data da venda antes do cupom térmico."""
     cliente = get_object_or_404(Cliente, id=cliente_id)
+    origem = _origem(request)
+    retorno = 'receber' if request.GET.get('retorno') == 'receber' else 'conta'
+    modo = request.GET.get('modo', '')
+    inicio_texto = request.GET.get('inicio', '').strip()
+    fim_texto = request.GET.get('fim', '').strip()
+    erro = ''
+
+    # Sem seleção, o usuário vê a tela de filtros em vez de imprimir tudo
+    # automaticamente. A opção ?auto=1 isolada não dispara a impressão.
+    if modo == 'periodo':
+        try:
+            if not re.fullmatch(r'\d{2}/\d{2}/\d{4}', inicio_texto):
+                raise ValueError()
+            if not re.fullmatch(r'\d{2}/\d{2}/\d{4}', fim_texto):
+                raise ValueError()
+            inicio = datetime.strptime(inicio_texto, '%d/%m/%Y').date()
+            fim = datetime.strptime(fim_texto, '%d/%m/%Y').date()
+            if inicio > fim:
+                erro = 'A data inicial não pode ser maior que a data final.'
+        except ValueError:
+            erro = 'Informe datas válidas no formato dd/mm/aaaa.'
+    elif modo != 'todas':
+        modo = 'todas'
+        # Se não houve submissão explícita do formulário, exibe as opções.
+        return render(
+            request,
+            'fiado/imprimir_opcoes.html',
+            {
+                'cliente': cliente,
+                'modo': modo,
+                'inicio': inicio_texto,
+                'fim': fim_texto,
+                'origem': origem,
+                'retorno': retorno,
+            },
+        )
+
+    if erro:
+        return render(
+            request,
+            'fiado/imprimir_opcoes.html',
+            {
+                'cliente': cliente,
+                'modo': modo,
+                'inicio': inicio_texto,
+                'fim': fim_texto,
+                'origem': origem,
+                'retorno': retorno,
+                'erro': erro,
+            },
+        )
+
+    fiados_query = Fiado.objects.filter(venda__cliente=cliente)
+    if modo == 'periodo':
+        fiados_query = fiados_query.filter(
+            venda__criada_em__date__gte=inicio,
+            venda__criada_em__date__lte=fim,
+        )
+
     fiados = list(
-        Fiado.objects.filter(venda__cliente=cliente)
+        fiados_query
         .select_related('venda')
         .prefetch_related('venda__itens__produto')
         .order_by('venda__criada_em', 'venda_id')
     )
-
     total_compras = sum((f.venda.total for f in fiados), Decimal('0.00'))
     total_pago = sum((f.valor_pago for f in fiados), Decimal('0.00'))
     saldo_em_aberto = sum((f.saldo_devedor for f in fiados), Decimal('0.00'))
@@ -347,5 +407,10 @@ def imprimir_cliente(request, cliente_id):
             'emitido_em': timezone.now(),
             'auto_imprimir': request.GET.get('auto') == '1',
             'nome_estabelecimento': 'Águia Café',
+            'modo': modo,
+            'inicio': inicio_texto,
+            'fim': fim_texto,
+            'origem': origem,
+            'retorno': retorno,
         },
     )
