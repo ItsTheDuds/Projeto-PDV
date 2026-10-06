@@ -198,7 +198,7 @@
 
     {% if user.is_superuser %}
     <aside class="card resumo-vendas-card no-print" aria-label="Resumo de vendas">
-        <div class="resumo-vendas-titulo">Vendido</div>
+        <div class="resumo-vendas-titulo">Valor Pago</div>
         <div id="fiadoSalesVendido" class="resumo-vendas-valor-principal">R$ 0,00</div>
 
         <div class="resumo-vendas-metricas">
@@ -212,7 +212,6 @@
             </div>
         </div>
         <div id="fiadoSalesPeriodLabel" class="resumo-vendas-periodo">Mês atual</div>
-        <small class="muted" style="display:block; line-height:1.35;">Vendido = valor já pago. Total = vendido + saldo em aberto das vendas do período.</small>
 
         <hr class="resumo-vendas-divisor">
 
