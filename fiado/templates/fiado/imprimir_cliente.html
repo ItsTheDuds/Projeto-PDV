@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extrato Fiado - {{ cliente.nome }}</title>
+    <style>
+        @page {
+            size: 80mm auto;
+            margin: 2mm;
+        }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; background: #fff; color: #000; }
+        body {
+            width: 76mm;
+            max-width: 76mm;
+            margin: 0 auto;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 11px;
+            line-height: 1.25;
+        }
+        .acoes { display: flex; gap: 6px; padding: 8px 0 10px; }
+        .acoes button, .acoes a {
+            border: 1px solid #222;
+            background: #fff;
+            color: #000;
+            text-decoration: none;
+            padding: 6px 8px;
+            font: inherit;
+            cursor: pointer;
+        }
+        .cupom { padding: 1mm 0 4mm; }
+        .centro { text-align: center; }
+        .estabelecimento { font-size: 16px; font-weight: 700; margin-bottom: 2px; }
+        .titulo { font-weight: 700; margin: 2px 0; }
+        .separador { border-top: 1px dashed #000; margin: 5px 0; }
+        .linha { display: flex; justify-content: space-between; gap: 8px; }
+        .linha span:last-child { text-align: right; }
+        .itens { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .itens th, .itens td {
+            padding: 2px 0;
+            vertical-align: top;
+            overflow-wrap: anywhere;
+        }
+        .itens th { border-bottom: 1px solid #000; text-align: left; }
+        .itens .qtd { width: 11mm; text-align: center; }
+        .itens .valor { width: 20mm; text-align: right; }
+        .produto-nome { font-weight: 700; }
+        .produto-detalhe { font-size: 10px; }
+        .pedido-titulo { font-weight: 700; margin-top: 7px; }
+        .total { font-size: 14px; font-weight: 700; margin-top: 4px; }
+        .rodape { text-align: center; margin-top: 8px; font-size: 10px; }
+        @media print {
+            .acoes { display: none !important; }
+            body { width: 76mm; max-width: 76mm; }
+        }
+    </style>
+</head>
+<body>
+    <div class="acoes">
+        <button type="button" onclick="window.print()">Imprimir</button>
+        <a href="{% url 'fiado:cliente_historico' cliente.id %}">Ver conta fiada</a>
+    </div>
+
+    <div class="cupom">
+        <div class="centro">
+            <div class="estabelecimento">{{ nome_estabelecimento }}</div>
+            <div class="titulo">EXTRATO DE FIADO</div>
+        </div>
+
+        <div class="separador"></div>
+        <div>Cliente: <strong>{{ cliente.nome }}</strong></div>
+        <div>Celular: {{ cliente.celular_formatado }}</div>
+        <div>Emitido: {{ emitido_em|date:"d/m/Y H:i" }}</div>
+        <div class="separador"></div>
+
+        {% for fiado in fiados %}
+        <div class="pedido-titulo">VENDA #{{ fiado.venda.id }}</div>
+        <div>Data: {{ fiado.venda.criada_em|date:"d/m/Y H:i" }}</div>
+        <table class="itens">
+            <thead>
+                <tr>
+                    <th>ITEM</th>
+                    <th class="qtd">QTD</th>
+                    <th class="valor">VALOR</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in fiado.venda.itens.all %}
+                <tr>
+                    <td>
+                        <div class="produto-nome">{{ item.produto.nome }}</div>
+                        <div class="produto-detalhe">R$ {{ item.preco_unitario|floatformat:2 }} un.</div>
+                    </td>
+                    <td class="qtd">{{ item.quantidade }}</td>
+                    <td class="valor">R$ {{ item.subtotal|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="linha">
+            <span>Valor da venda:</span>
+            <strong>R$ {{ fiado.venda.total|floatformat:2 }}</strong>
+        </div>
+        <div class="linha">
+            <span>Ja pago:</span>
+            <span>R$ {{ fiado.valor_pago|floatformat:2 }}</span>
+        </div>
+        <div class="linha">
+            <span>Saldo:</span>
+            <strong>R$ {{ fiado.saldo_devedor|floatformat:2 }}</strong>
+        </div>
+        <div class="linha">
+            <span>Status:</span>
+            <strong>
+                {% if fiado.pago %}PAGO{% elif fiado.valor_pago > 0 %}PARCIAL{% else %}EM ABERTO{% endif %}
+            </strong>
+        </div>
+        <div class="separador"></div>
+        {% empty %}
+        <div>Nenhuma compra fiada cadastrada.</div>
+        <div class="separador"></div>
+        {% endfor %}
+
+        <div class="linha">
+            <span>TOTAL COMPRADO:</span>
+            <strong>R$ {{ total_compras|floatformat:2 }}</strong>
+        </div>
+        <div class="linha">
+            <span>TOTAL PAGO:</span>
+            <strong>R$ {{ total_pago|floatformat:2 }}</strong>
+        </div>
+        <div class="linha total">
+            <span>SALDO EM ABERTO:</span>
+            <span>R$ {{ saldo_em_aberto|floatformat:2 }}</span>
+        </div>
+
+        <div class="separador"></div>
+        <div class="rodape">
+            {{ nome_estabelecimento }}<br>
+            Extrato informativo de compras fiadas.
+        </div>
+    </div>
+
+    {% if auto_imprimir %}
+    <script>
+        window.addEventListener('load', function () { window.print(); });
+    </script>
+    {% endif %}
+</body>
+</html>
