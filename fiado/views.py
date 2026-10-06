@@ -6,6 +6,8 @@ from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.http import require_GET
 
 from clientes.models import Cliente
 
@@ -314,5 +316,36 @@ def cliente_historico(request, cliente_id):
             'saldo': saldo,
             'recebimentos': recebimentos,
             'origem': origem,
+        },
+    )
+
+
+@require_GET
+def imprimir_cliente(request, cliente_id):
+    """Extrato térmico de todas as compras fiadas do cliente (sem alterar dados)."""
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    fiados = list(
+        Fiado.objects.filter(venda__cliente=cliente)
+        .select_related('venda')
+        .prefetch_related('venda__itens__produto')
+        .order_by('venda__criada_em', 'venda_id')
+    )
+
+    total_compras = sum((f.venda.total for f in fiados), Decimal('0.00'))
+    total_pago = sum((f.valor_pago for f in fiados), Decimal('0.00'))
+    saldo_em_aberto = sum((f.saldo_devedor for f in fiados), Decimal('0.00'))
+
+    return render(
+        request,
+        'fiado/imprimir_cliente.html',
+        {
+            'cliente': cliente,
+            'fiados': fiados,
+            'total_compras': total_compras,
+            'total_pago': total_pago,
+            'saldo_em_aberto': saldo_em_aberto,
+            'emitido_em': timezone.now(),
+            'auto_imprimir': request.GET.get('auto') == '1',
+            'nome_estabelecimento': 'Águia Café',
         },
     )
