@@ -101,10 +101,34 @@ def resumo_periodo(request):
         )['total']
     )
 
+    # O total das vendas permanece o mesmo. Das vendas fiadas realizadas
+    # no período, a parcela ainda não recebida compõe o "em aberto".
+    # O restante (incluindo vendas de pagamento imediato, caso existam)
+    # é o valor já recebido, apresentado como "Vendido" no painel.
+    fiados = Fiado.objects.filter(
+        venda__criada_em__date__gte=inicio,
+        venda__criada_em__date__lte=fim,
+    ).aggregate(
+        total_fiado=Coalesce(
+            Sum('venda__total'),
+            Value(Decimal('0.00')),
+            output_field=DecimalField(max_digits=14, decimal_places=2),
+        ),
+        pago_fiado=Coalesce(
+            Sum('valor_pago'),
+            Value(Decimal('0.00')),
+            output_field=DecimalField(max_digits=14, decimal_places=2),
+        ),
+    )
+    em_aberto = fiados['total_fiado'] - fiados['pago_fiado']
+    vendido = total - em_aberto
+
     return JsonResponse({
         'tipo': tipo,
         'inicio': inicio.isoformat(),
         'fim': fim.isoformat(),
+        'vendido': f'{vendido:.2f}',
+        'em_aberto': f'{em_aberto:.2f}',
         'total': f'{total:.2f}',
     })
 
