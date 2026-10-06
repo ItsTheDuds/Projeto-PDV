@@ -59,7 +59,7 @@
 <body>
     <div class="acoes">
         <button type="button" onclick="window.print()">Imprimir</button>
-        <a href="{% url 'fiado:cliente_historico' cliente.id %}">Ver conta fiada</a>
+        <a href="{% url 'fiado:imprimir_cliente' cliente.id %}?origem={{ origem }}&retorno={{ retorno }}">Alterar filtro</a>
     </div>
 
     <div class="cupom">
@@ -72,6 +72,9 @@
         <div>Cliente: <strong>{{ cliente.nome }}</strong></div>
         <div>Celular: {{ cliente.celular_formatado }}</div>
         <div>Emitido: {{ emitido_em|date:"d/m/Y H:i" }}</div>
+        <div>
+            {% if modo == 'periodo' %}Vendas: {{ inicio }} a {{ fim }}{% else %}Vendas: Todas as datas{% endif %}
+        </div>
         <div class="separador"></div>
 
         {% for fiado in fiados %}
