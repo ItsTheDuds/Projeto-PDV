@@ -18,7 +18,7 @@
     </div>
 
     <div class="actions no-print" style="justify-content:flex-end; margin-bottom:1.25rem;">
-        <a href="{% url 'fiado:imprimir_cliente' cliente.id %}?auto=1" target="_blank" rel="noopener" class="btn btn-primary">Imprimir Fiado</a>
+        <a href="{% url 'fiado:imprimir_cliente' cliente.id %}?origem={{ origem }}&retorno=conta" class="btn btn-primary">Imprimir Fiado</a>
         {% if saldo > 0 %}
         <a href="{% url 'fiado:receber_cliente' cliente.id %}?origem={{ origem }}" class="btn btn-success">Receber pagamento</a>
         {% endif %}
