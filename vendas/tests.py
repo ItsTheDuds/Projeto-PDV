@@ -141,6 +141,38 @@ class ResumoVendasPermissaoTests(TestCase):
 
         self.assertEqual(response.status_code, 403)
 
+    def test_valores_vendido_em_aberto_e_total_com_pagamento_parcial(self):
+        self.client.force_login(self.superuser)
+        cliente = Cliente.objects.create(nome='Resumo Teste', celular='61988888888')
+
+        venda_paga = Venda.objects.create(
+            cliente=cliente, forma_pagamento='FIADO', total=Decimal('50.00'),
+        )
+        fiado_pago = Fiado.objects.create(venda=venda_paga)
+        fiado_pago.registrar_pagamento(Decimal('50.00'))
+
+        venda_parcial = Venda.objects.create(
+            cliente=cliente, forma_pagamento='FIADO', total=Decimal('100.00'),
+        )
+        fiado_parcial = Fiado.objects.create(venda=venda_parcial)
+        fiado_parcial.registrar_pagamento(Decimal('25.00'))
+
+        venda_aberta = Venda.objects.create(
+            cliente=cliente, forma_pagamento='FIADO', total=Decimal('30.00'),
+        )
+        Fiado.objects.create(venda=venda_aberta)
+
+        response = self.client.get(reverse('vendas:resumo_periodo'))
+        self.assertEqual(response.status_code, 200)
+        dados = response.json()
+        self.assertEqual(Decimal(dados['vendido']), Decimal('75.00'))
+        self.assertEqual(Decimal(dados['em_aberto']), Decimal('105.00'))
+        self.assertEqual(Decimal(dados['total']), Decimal('180.00'))
+        self.assertEqual(
+            Decimal(dados['vendido']) + Decimal(dados['em_aberto']),
+            Decimal(dados['total']),
+        )
+
     def test_superuser_pode_acessar_resumo_de_vendas(self):
         self.client.force_login(self.superuser)
 
