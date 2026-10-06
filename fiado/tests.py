@@ -253,3 +253,72 @@ class PainelResumoVendasPermissaoTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Vendas do período')
+
+
+
+class ImpressaoFiadoClienteTests(TestCase):
+    def setUp(self):
+        self.operador = get_user_model().objects.create_user(
+            username='operador-impressao',
+            password='senha-teste-123',
+        )
+        self.client.force_login(self.operador)
+        self.cliente = Cliente.objects.create(
+            nome='Cliente Extrato',
+            celular='61999999999',
+        )
+        self.outro_cliente = Cliente.objects.create(
+            nome='Outro Cliente',
+            celular='61988888888',
+        )
+        self.produto = produtosModel.objects.create(
+            nome='Pao de queijo',
+            preco=Decimal('5.00'),
+        )
+
+    def criar_fiado(self, cliente, valor, quantidade=1):
+        venda = Venda.objects.create(
+            cliente=cliente,
+            forma_pagamento='FIADO',
+            total=valor,
+        )
+        ItemVenda.objects.create(
+            venda=venda,
+            produto=self.produto,
+            quantidade=quantidade,
+            preco_unitario=valor / quantidade,
+            subtotal=valor,
+        )
+        return Fiado.objects.create(venda=venda)
+
+    def test_extrato_contem_itens_de_compras_pagas_e_abertas_e_soma(self):
+        pago = self.criar_fiado(self.cliente, Decimal('10.00'), quantidade=2)
+        aberto = self.criar_fiado(self.cliente, Decimal('15.00'))
+        pago.registrar_pagamento(Decimal('10.00'))
+        aberto.registrar_pagamento(Decimal('4.00'))
+        outro = self.criar_fiado(self.outro_cliente, Decimal('99.00'))
+
+        resposta = self.client.get(
+            reverse('fiado:imprimir_cliente', args=[self.cliente.id]),
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, 'EXTRATO DE FIADO')
+        self.assertContains(resposta, 'Pao de queijo')
+        self.assertContains(resposta, f'VENDA #{pago.venda_id}')
+        self.assertContains(resposta, f'VENDA #{aberto.venda_id}')
+        self.assertNotContains(resposta, f'VENDA #{outro.venda_id}')
+        self.assertEqual(resposta.context['total_compras'], Decimal('25.00'))
+        self.assertEqual(resposta.context['total_pago'], Decimal('14.00'))
+        self.assertEqual(resposta.context['saldo_em_aberto'], Decimal('11.00'))
+        self.assertEqual(Fiado.objects.filter(pago=True).count(), 1)
+
+    def test_impressao_automatica_e_extrato_vazio(self):
+        resposta = self.client.get(
+            reverse('fiado:imprimir_cliente', args=[self.cliente.id]),
+            {'auto': '1'},
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, 'window.print()')
+        self.assertContains(resposta, 'Nenhuma compra fiada cadastrada.')
+        self.assertEqual(resposta.context['saldo_em_aberto'], Decimal('0.00'))
