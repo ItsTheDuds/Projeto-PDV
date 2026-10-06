@@ -348,7 +348,17 @@ def imprimir_cliente(request, cliente_id):
             erro = 'Informe datas válidas no formato dd/mm/aaaa.'
     elif modo != 'todas':
         modo = 'todas'
-        # Se não houve submissão explícita do formulário, exibe as opções.
+        # Usa a data da primeira compra fiada do cliente como sugestão inicial.
+        # Não altera o intervalo informado pelo usuário nas tentativas seguintes.
+        primeira_venda = (
+            Fiado.objects.filter(venda__cliente=cliente)
+            .order_by('venda__criada_em', 'id')
+            .values_list('venda__criada_em', flat=True)
+            .first()
+        )
+        if primeira_venda:
+            inicio_texto = timezone.localtime(primeira_venda).strftime('%d/%m/%Y')
+
         return render(
             request,
             'fiado/imprimir_opcoes.html',
