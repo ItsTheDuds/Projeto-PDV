@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block title %}Imprimir Fiado{% endblock %}
+
+{% block extra_head %}
+<style>
+    .imprimir-fiado-opcoes { max-width: 660px; margin: 0 auto; }
+    .imprimir-fiado-escolhas { display: grid; gap: .85rem; margin: 1.2rem 0; }
+    .imprimir-fiado-escolha {
+        display: flex; align-items: flex-start; gap: .7rem;
+        padding: .95rem; border: 1px solid #ced4da; border-radius: .5rem;
+        cursor: pointer; background: #fff;
+    }
+    .imprimir-fiado-escolha:has(input:checked) {
+        background: #fff7ed; border-color: #c96a1b;
+    }
+    .imprimir-fiado-escolha input {
+        width: auto; margin: .2rem 0 0;
+        accent-color: #c96a1b;
+    }
+    .imprimir-fiado-datas {
+        display: grid; grid-template-columns: 1fr 1fr; gap: .75rem;
+        padding: 1rem; background: #f8f9fa; border-radius: .5rem;
+        margin-bottom: 1rem;
+    }
+    @media (max-width: 550px) {
+        .imprimir-fiado-datas { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card imprimir-fiado-opcoes">
+    <h1 class="page-title">Imprimir Fiado</h1>
+    <p class="subtitle">Cliente: <strong>{{ cliente.nome }}</strong></p>
+    <p>Escolha quais compras fiadas deseja incluir no comprovante de 80 mm.</p>
+
+    {% if erro %}
+    <div class="alert alert-error" role="alert">{{ erro }}</div>
+    {% endif %}
+
+    <form method="get" action="{% url 'fiado:imprimir_cliente' cliente.id %}" id="opcoesImpressao">
+        <input type="hidden" name="auto" value="1">
+        <input type="hidden" name="origem" value="{{ origem }}">
+        <input type="hidden" name="retorno" value="{{ retorno }}">
+
+        <div class="imprimir-fiado-escolhas">
+            <label class="imprimir-fiado-escolha">
+                <input type="radio" name="modo" value="todas" {% if modo != 'periodo' %}checked{% endif %}>
+                <span><strong>Imprimir tudo</strong><br>
+                    <small class="muted">Todas as compras fiadas, pagas ou em aberto.</small>
+                </span>
+            </label>
+
+            <label class="imprimir-fiado-escolha">
+                <input type="radio" name="modo" value="periodo" {% if modo == 'periodo' %}checked{% endif %}>
+                <span><strong>Filtrar pelos dias das vendas</strong><br>
+                    <small class="muted">Somente compras realizadas dentro do intervalo selecionado.</small>
+                </span>
+            </label>
+        </div>
+
+        <div class="imprimir-fiado-datas" id="datasImpressao" {% if modo != 'periodo' %}hidden{% endif %}>
+            <div>
+                <label for="inicio">Data inicial</label>
+                <input id="inicio" name="inicio" type="text" inputmode="numeric" maxlength="10"
+                       placeholder="dd/mm/aaaa" value="{{ inicio }}" autocomplete="off">
+            </div>
+            <div>
+                <label for="fim">Data final</label>
+                <input id="fim" name="fim" type="text" inputmode="numeric" maxlength="10"
+                       placeholder="dd/mm/aaaa" value="{{ fim }}" autocomplete="off">
+            </div>
+        </div>
+
+        <div class="actions" style="justify-content:flex-end;">
+            {% if retorno == 'receber' %}
+            <a href="{% url 'fiado:receber_cliente' cliente.id %}?origem={{ origem }}" class="btn btn-light">Cancelar</a>
+            {% else %}
+            <a href="{% url 'fiado:cliente_historico' cliente.id %}?origem={{ origem }}" class="btn btn-light">Cancelar</a>
+            {% endif %}
+            <button type="submit" class="btn btn-primary">Gerar impressão</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const radios = document.querySelectorAll('input[name="modo"]');
+    const datas = document.getElementById('datasImpressao');
+    const inicio = document.getElementById('inicio');
+    const fim = document.getElementById('fim');
+
+    function atualizarModo() {
+        const periodo = document.querySelector('input[name="modo"]:checked').value === 'periodo';
+        datas.hidden = !periodo;
+        inicio.required = periodo;
+        fim.required = periodo;
+    }
+
+    function mascaraData(e) {
+        const numeros = e.target.value.replace(/\D/g, '').slice(0, 8);
+        let valor = numeros.slice(0, 2);
+        if (numeros.length > 2) valor += '/' + numeros.slice(2, 4);
+        if (numeros.length > 4) valor += '/' + numeros.slice(4);
+        e.target.value = valor;
+    }
+
+    radios.forEach(r => r.addEventListener('change', atualizarModo));
+    inicio.addEventListener('input', mascaraData);
+    fim.addEventListener('input', mascaraData);
+    atualizarModo();
+})();
+</script>
+{% endblock %}
