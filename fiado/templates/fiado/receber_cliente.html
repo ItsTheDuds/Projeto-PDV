@@ -105,7 +105,7 @@
         </div>
 
         <div class="form-actions">
-            <a href="{% url 'fiado:imprimir_cliente' cliente.id %}?auto=1" target="_blank" rel="noopener" class="btn btn-primary">Imprimir Fiado</a>
+            <a href="{% url 'fiado:imprimir_cliente' cliente.id %}?origem={{ origem }}&retorno=receber" class="btn btn-primary">Imprimir Fiado</a>
             <button
                 id="abrirPagarTudo"
                 type="button"
