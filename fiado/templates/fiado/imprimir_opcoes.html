@@ -4,81 +4,96 @@
 
 {% block extra_head %}
 <style>
-    .imprimir-fiado-opcoes { max-width: 660px; margin: 0 auto; }
-    .imprimir-fiado-escolhas { display: grid; gap: .85rem; margin: 1.2rem 0; }
-    .imprimir-fiado-escolha {
-        display: flex; align-items: flex-start; gap: .7rem;
-        padding: .95rem; border: 1px solid #ced4da; border-radius: .5rem;
-        cursor: pointer; background: #fff;
-    }
-    .imprimir-fiado-escolha:has(input:checked) {
-        background: #fff7ed; border-color: #c96a1b;
-    }
-    .imprimir-fiado-escolha input {
-        width: auto; margin: .2rem 0 0;
-        accent-color: #c96a1b;
-    }
-    .imprimir-fiado-datas[hidden] { display: none; }
-    .imprimir-fiado-datas {
-        display: grid; grid-template-columns: 1fr 1fr; gap: .75rem;
-        padding: 1rem; background: #f8f9fa; border-radius: .5rem;
-        margin-bottom: 1rem;
-    }
+    .selecao-fiado { max-width: 820px; margin: 0 auto; }
+    .filtro-fiado-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    .filtro-fiado-barra { background: #f8f9fa; border: 1px solid #dee2e6; padding: 1rem; border-radius: .5rem; margin: 1rem 0; }
+    .filtro-fiado-acoes { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin: 1rem 0; }
+    .lista-fiados-impressao { max-height: 420px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: .5rem; }
+    .linha-fiado-impressao { display: flex; align-items: center; gap: 1rem; padding: .85rem; border-bottom: 1px solid #dee2e6; cursor: pointer; margin: 0; }
+    .linha-fiado-impressao:last-child { border-bottom: 0; }
+    .linha-fiado-impressao:has(input:checked) { background: #fff9f0; }
+    .linha-fiado-impressao[hidden] { display: none; }
+    .linha-fiado-impressao input { width: 20px; height: 20px; margin: 0; flex-shrink: 0; accent-color: #0d6efd; }
+    .linha-fiado-dados { flex: 1; min-width: 0; }
+    .linha-fiado-valor { text-align: right; white-space: nowrap; }
+    .selecionados-fiado { font-weight: 700; }
     @media (max-width: 550px) {
-        .imprimir-fiado-datas { grid-template-columns: 1fr; }
+        .filtro-fiado-grid { grid-template-columns: 1fr; }
+        .linha-fiado-impressao { gap: .5rem; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="card imprimir-fiado-opcoes">
+<div class="card selecao-fiado">
     <h1 class="page-title">Imprimir Fiado</h1>
     <p class="subtitle">Cliente: <strong>{{ cliente.nome }}</strong></p>
-    <p>Escolha quais compras fiadas deseja incluir no comprovante de 80 mm.</p>
+    <p class="muted">Escolha as compras que devem constar no comprovante térmico de 80 mm. Compras com saldo pendente já vêm marcadas. As quitadas ficam desmarcadas.</p>
 
-    {% if erro %}
-    <div class="alert alert-error" role="alert">{{ erro }}</div>
-    {% endif %}
+    {% if erro %}<div class="alert alert-error" role="alert">{{ erro }}</div>{% endif %}
 
-    <form method="get" action="{% url 'fiado:imprimir_cliente' cliente.id %}" id="opcoesImpressao">
-        <input type="hidden" name="auto" value="1">
+    <div class="filtro-fiado-barra no-print">
+        <strong>Localizar vendas por data</strong>
+        <p class="muted" style="margin:.35rem 0 .8rem;">O filtro apenas mostra ou oculta compras. Não desmarca as já selecionadas.</p>
+        <div class="filtro-fiado-grid">
+            <div>
+                <label for="inicioFiltro">Data inicial</label>
+                <input id="inicioFiltro" type="text" maxlength="10" inputmode="numeric" placeholder="dd/mm/aaaa" value="{{ data_inicial }}" autocomplete="off">
+            </div>
+            <div>
+                <label for="fimFiltro">Data final</label>
+                <input id="fimFiltro" type="text" maxlength="10" inputmode="numeric" placeholder="dd/mm/aaaa" value="{{ data_final }}" autocomplete="off">
+            </div>
+        </div>
+        <div class="filtro-fiado-acoes" style="margin-bottom:0;">
+            <button type="button" id="aplicarFiltro" class="btn btn-outline">Filtrar datas</button>
+            <button type="button" id="mostrarTodas" class="btn btn-light">Mostrar todas</button>
+        </div>
+        <p id="erroFiltro" style="display:none; color:#842029; margin:.5rem 0 0;" role="alert"></p>
+    </div>
+
+    <form method="post" action="{% url 'fiado:imprimir_cliente' cliente.id %}" id="formImpressao">
+        {% csrf_token %}
         <input type="hidden" name="origem" value="{{ origem }}">
         <input type="hidden" name="retorno" value="{{ retorno }}">
 
-        <div class="imprimir-fiado-escolhas">
-            <label class="imprimir-fiado-escolha">
-                <input type="radio" name="modo" value="todas" {% if modo != 'periodo' %}checked{% endif %}>
-                <span><strong>Imprimir tudo</strong><br>
-                    <small class="muted">Todas as compras fiadas, pagas ou em aberto.</small>
-                </span>
-            </label>
-
-            <label class="imprimir-fiado-escolha">
-                <input type="radio" name="modo" value="periodo" {% if modo == 'periodo' %}checked{% endif %}>
-                <span><strong>Filtrar pelos dias das vendas</strong><br>
-                    <small class="muted">Somente compras realizadas dentro do intervalo selecionado.</small>
-                </span>
-            </label>
+        <div class="filtro-fiado-acoes">
+            <button type="button" class="btn btn-outline btn-sm" id="marcarVisiveis">Marcar visíveis</button>
+            <button type="button" class="btn btn-light btn-sm" id="desmarcarVisiveis">Desmarcar visíveis</button>
+            <span id="quantidadeSelecionada" class="selecionados-fiado" aria-live="polite"></span>
         </div>
 
-        <div class="imprimir-fiado-datas" id="datasImpressao" {% if modo != 'periodo' %}hidden{% endif %}>
-            <div>
-                <label for="inicio">Data inicial</label>
-                <input id="inicio" name="inicio" type="text" inputmode="numeric" maxlength="10"
-                       placeholder="dd/mm/aaaa" value="{{ inicio }}" autocomplete="off">
-            </div>
-            <div>
-                <label for="fim">Data final</label>
-                <input id="fim" name="fim" type="text" inputmode="numeric" maxlength="10"
-                       placeholder="dd/mm/aaaa" value="{{ fim }}" autocomplete="off">
-            </div>
+        <div class="lista-fiados-impressao">
+            {% for fiado in fiados %}
+            <label class="linha-fiado-impressao"
+                   data-data="{{ fiado.venda.criada_em|date:'Y-m-d' }}">
+                <input type="checkbox" name="fiados" value="{{ fiado.id }}" {% if fiado.id in selecionados %}checked{% endif %}>
+                <span class="linha-fiado-dados">
+                    <strong>Venda #{{ fiado.venda.id }}</strong>
+                    <span class="muted"> — {{ fiado.venda.criada_em|date:"d/m/Y H:i" }}</span>
+                    <span style="display:block; margin-top:.25rem;">
+                        {% if fiado.pago %}<span class="badge badge-paid">Pago</span>
+                        {% elif fiado.valor_pago > 0 %}<span class="badge badge-open">Parcial</span>
+                        {% else %}<span class="badge badge-open">Em aberto</span>{% endif %}
+                    </span>
+                </span>
+                <span class="linha-fiado-valor">
+                    <strong>R$ {{ fiado.venda.total|floatformat:2 }}</strong>
+                    <small class="muted" style="display:block;">Saldo R$ {{ fiado.saldo_devedor|floatformat:2 }}</small>
+                </span>
+            </label>
+            {% empty %}
+            <p class="muted" style="padding:1rem;">Este cliente ainda não possui compras fiadas.</p>
+            {% endfor %}
         </div>
+        <p id="semResultados" class="muted" style="display:none; margin:.75rem 0;">Nenhuma venda encontrada neste período.</p>
+        <p id="erroSelecao" style="display:none; color:#842029;" role="alert">Selecione ao menos uma compra para imprimir.</p>
 
-        <div class="actions" style="justify-content:flex-end;">
+        <div class="actions" style="justify-content:flex-end; margin-top:1.25rem;">
             {% if retorno == 'receber' %}
-            <a href="{% url 'fiado:receber_cliente' cliente.id %}?origem={{ origem }}" class="btn btn-light">Cancelar</a>
+                <a href="{% url 'fiado:receber_cliente' cliente.id %}?origem={{ origem }}" class="btn btn-light">Cancelar</a>
             {% else %}
-            <a href="{% url 'fiado:cliente_historico' cliente.id %}?origem={{ origem }}" class="btn btn-light">Cancelar</a>
+                <a href="{% url 'fiado:cliente_historico' cliente.id %}?origem={{ origem }}" class="btn btn-light">Cancelar</a>
             {% endif %}
             <button type="submit" class="btn btn-primary">Gerar impressão</button>
         </div>
@@ -89,19 +104,16 @@
 {% block extra_js %}
 <script>
 (function () {
-    const radios = document.querySelectorAll('input[name="modo"]');
-    const datas = document.getElementById('datasImpressao');
-    const inicio = document.getElementById('inicio');
-    const fim = document.getElementById('fim');
+    const linhas = [...document.querySelectorAll('.linha-fiado-impressao')];
+    const caixas = linhas.map(linha => linha.querySelector('input[name="fiados"]'));
+    const inicioEl = document.getElementById('inicioFiltro');
+    const fimEl = document.getElementById('fimFiltro');
+    const erroFiltro = document.getElementById('erroFiltro');
+    const semResultados = document.getElementById('semResultados');
+    const erroSelecao = document.getElementById('erroSelecao');
+    const quantidade = document.getElementById('quantidadeSelecionada');
 
-    function atualizarModo() {
-        const periodo = document.querySelector('input[name="modo"]:checked').value === 'periodo';
-        datas.hidden = !periodo;
-        inicio.required = periodo;
-        fim.required = periodo;
-    }
-
-    function mascaraData(e) {
+    function mascara(e) {
         const numeros = e.target.value.replace(/\D/g, '').slice(0, 8);
         let valor = numeros.slice(0, 2);
         if (numeros.length > 2) valor += '/' + numeros.slice(2, 4);
@@ -109,10 +121,63 @@
         e.target.value = valor;
     }
 
-    radios.forEach(r => r.addEventListener('change', atualizarModo));
-    inicio.addEventListener('input', mascaraData);
-    fim.addEventListener('input', mascaraData);
-    atualizarModo();
+    function dataIso(br) {
+        const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(br.trim());
+        if (!m) return null;
+        const dia = Number(m[1]), mes = Number(m[2]), ano = Number(m[3]);
+        const data = new Date(ano, mes - 1, dia);
+        if (data.getFullYear() !== ano || data.getMonth() !== mes - 1 || data.getDate() !== dia) return null;
+        return m[3] + '-' + m[2] + '-' + m[1];
+    }
+
+    function atualizarContagem() {
+        const marcados = caixas.filter(c => c.checked).length;
+        quantidade.textContent = marcados + ' de ' + caixas.length + ' selecionadas';
+        if (marcados) erroSelecao.style.display = 'none';
+    }
+
+    function filtrar() {
+        const inicio = dataIso(inicioEl.value), fim = dataIso(fimEl.value);
+        if (!inicio || !fim || inicio > fim) {
+            erroFiltro.textContent = 'Informe datas válidas (dd/mm/aaaa), com início anterior ou igual ao fim.';
+            erroFiltro.style.display = 'block';
+            return;
+        }
+        erroFiltro.style.display = 'none';
+        let visiveis = 0;
+        linhas.forEach(linha => {
+            const mostrar = linha.dataset.data >= inicio && linha.dataset.data <= fim;
+            linha.hidden = !mostrar;
+            if (mostrar) visiveis++;
+        });
+        semResultados.style.display = visiveis ? 'none' : 'block';
+    }
+
+    inicioEl.addEventListener('input', mascara);
+    fimEl.addEventListener('input', mascara);
+    document.getElementById('aplicarFiltro').addEventListener('click', filtrar);
+    document.getElementById('mostrarTodas').addEventListener('click', () => {
+        erroFiltro.style.display = 'none';
+        semResultados.style.display = 'none';
+        linhas.forEach(linha => { linha.hidden = false; });
+    });
+    document.getElementById('marcarVisiveis').addEventListener('click', () => {
+        linhas.filter(l => !l.hidden).forEach(l => { l.querySelector('input').checked = true; });
+        atualizarContagem();
+    });
+    document.getElementById('desmarcarVisiveis').addEventListener('click', () => {
+        linhas.filter(l => !l.hidden).forEach(l => { l.querySelector('input').checked = false; });
+        atualizarContagem();
+    });
+    caixas.forEach(c => c.addEventListener('change', atualizarContagem));
+
+    document.getElementById('formImpressao').addEventListener('submit', e => {
+        if (!caixas.some(c => c.checked)) {
+            e.preventDefault();
+            erroSelecao.style.display = 'block';
+        }
+    });
+    atualizarContagem();
 })();
 </script>
 {% endblock %}
