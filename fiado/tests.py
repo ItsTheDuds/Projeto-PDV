@@ -294,105 +294,101 @@ class ImpressaoFiadoClienteTests(TestCase):
         )
         return Fiado.objects.create(venda=venda)
 
-    def test_extrato_contem_itens_de_compras_pagas_e_abertas_e_soma(self):
-        pago = self.criar_fiado(self.cliente, Decimal('10.00'), quantidade=2)
-        aberto = self.criar_fiado(self.cliente, Decimal('15.00'))
+    def test_pendentes_preselecionados_e_quitados_desmarcados(self):
+        pago = self.criar_fiado(self.cliente, Decimal('10.00'))
+        parcial = self.criar_fiado(self.cliente, Decimal('15.00'))
+        aberto = self.criar_fiado(self.cliente, Decimal('5.00'))
+        outra = self.criar_fiado(self.outro_cliente, Decimal('50.00'))
         pago.registrar_pagamento(Decimal('10.00'))
-        aberto.registrar_pagamento(Decimal('4.00'))
-        outro = self.criar_fiado(self.outro_cliente, Decimal('99.00'))
-
-        seletor = self.client.get(
-            reverse('fiado:imprimir_cliente', args=[self.cliente.id]),
-        )
-        self.assertEqual(seletor.status_code, 200)
-        self.assertContains(seletor, 'Imprimir tudo')
-        self.assertContains(seletor, 'Filtrar pelos dias das vendas')
-        self.assertNotContains(seletor, 'EXTRATO DE FIADO')
+        parcial.registrar_pagamento(Decimal('5.00'))
 
         resposta = self.client.get(
-            reverse('fiado:imprimir_cliente', args=[self.cliente.id]),
-            {'modo': 'todas'},
+            reverse('fiado:imprimir_cliente', args=[self.cliente.id])
         )
-
         self.assertEqual(resposta.status_code, 200)
+        self.assertTemplateUsed(resposta, 'fiado/imprimir_opcoes.html')
+        self.assertEqual(
+            resposta.context['selecionados'], {parcial.id, aberto.id}
+        )
+        self.assertNotContains(resposta, f'value="{outra.id}"')
+        self.assertNotContains(resposta, 'EXTRATO DE FIADO')
+
+    def test_somente_compras_selecionadas_sao_impressas_e_somadas(self):
+        pago = self.criar_fiado(self.cliente, Decimal('10.00'), quantidade=2)
+        parcial = self.criar_fiado(self.cliente, Decimal('15.00'))
+        aberto = self.criar_fiado(self.cliente, Decimal('25.00'))
+        pago.registrar_pagamento(Decimal('10.00'))
+        parcial.registrar_pagamento(Decimal('5.00'))
+
+        resposta = self.client.post(
+            reverse('fiado:imprimir_cliente', args=[self.cliente.id]),
+            {'fiados': [str(pago.id), str(parcial.id)]},
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertTemplateUsed(resposta, 'fiado/imprimir_cliente.html')
         self.assertContains(resposta, 'EXTRATO DE FIADO')
         self.assertContains(resposta, 'Pao de queijo')
-        self.assertContains(resposta, f'VENDA #{pago.venda_id}')
-        self.assertContains(resposta, f'VENDA #{aberto.venda_id}')
-        self.assertNotContains(resposta, f'VENDA #{outro.venda_id}')
-        self.assertEqual(resposta.context['total_compras'], Decimal('25.00'))
-        self.assertEqual(resposta.context['total_pago'], Decimal('14.00'))
-        self.assertEqual(resposta.context['saldo_em_aberto'], Decimal('11.00'))
-        self.assertEqual(Fiado.objects.filter(pago=True).count(), 1)
-
-    def test_impressao_automatica_e_extrato_vazio(self):
-        resposta = self.client.get(
-            reverse('fiado:imprimir_cliente', args=[self.cliente.id]),
-            {'modo': 'todas', 'auto': '1'},
-        )
-        self.assertEqual(resposta.status_code, 200)
         self.assertContains(resposta, 'window.print()')
-        self.assertContains(resposta, 'Nenhuma compra fiada cadastrada.')
-        self.assertEqual(resposta.context['saldo_em_aberto'], Decimal('0.00'))
+        self.assertContains(resposta, f'VENDA #{pago.venda_id}')
+        self.assertContains(resposta, f'VENDA #{parcial.venda_id}')
+        self.assertNotContains(resposta, f'VENDA #{aberto.venda_id}')
+        self.assertEqual(resposta.context['total_compras'], Decimal('25.00'))
+        self.assertEqual(resposta.context['total_pago'], Decimal('15.00'))
+        self.assertEqual(resposta.context['saldo_em_aberto'], Decimal('10.00'))
 
+    def test_pagamento_pendente_pode_ser_impresso_sozinho(self):
+        pago = self.criar_fiado(self.cliente, Decimal('20.00'))
+        aberto = self.criar_fiado(self.cliente, Decimal('7.00'))
+        pago.registrar_pagamento(Decimal('20.00'))
 
-    def test_intervalo_inclui_dias_extremos_e_recalcula_totais(self):
-        fora = self.criar_fiado(self.cliente, Decimal('11.00'))
-        inicio = self.criar_fiado(self.cliente, Decimal('20.00'))
-        fim = self.criar_fiado(self.cliente, Decimal('30.00'))
-        depois = self.criar_fiado(self.cliente, Decimal('40.00'))
+        resposta = self.client.post(
+            reverse('fiado:imprimir_cliente', args=[self.cliente.id]),
+            {'fiados': [str(aberto.id)]},
+        )
+        self.assertEqual(resposta.context['total_compras'], Decimal('7.00'))
+        self.assertEqual(resposta.context['total_pago'], Decimal('0.00'))
+        self.assertEqual(resposta.context['saldo_em_aberto'], Decimal('7.00'))
 
+    def test_primeira_compra_predefinida_para_localizar_por_data(self):
+        recente = self.criar_fiado(self.cliente, Decimal('15.00'))
+        antiga = self.criar_fiado(self.cliente, Decimal('5.00'))
+        outra = self.criar_fiado(self.outro_cliente, Decimal('99.00'))
         for fiado, data in (
-            (fora, datetime(2026, 10, 1, 23, 30)),
-            (inicio, datetime(2026, 10, 2, 0, 0)),
-            (fim, datetime(2026, 10, 5, 23, 59)),
-            (depois, datetime(2026, 10, 6, 0, 1)),
+            (recente, datetime(2026, 10, 6, 10, 0)),
+            (antiga, datetime(2026, 9, 28, 16, 30)),
+            (outra, datetime(2026, 1, 1, 8, 0)),
         ):
             Venda.objects.filter(pk=fiado.venda_id).update(
                 criada_em=timezone.make_aware(data)
             )
 
-        inicio.registrar_pagamento(Decimal('5.00'))
-        fim.registrar_pagamento(Decimal('30.00'))
         resposta = self.client.get(
-            reverse('fiado:imprimir_cliente', args=[self.cliente.id]),
-            {
-                'modo': 'periodo',
-                'inicio': '02/10/2026',
-                'fim': '05/10/2026',
-            },
+            reverse('fiado:imprimir_cliente', args=[self.cliente.id])
         )
+        self.assertEqual(resposta.context['data_inicial'], '28/09/2026')
+        self.assertContains(resposta, 'value="28/09/2026"')
 
-        self.assertEqual(resposta.status_code, 200)
-        self.assertContains(resposta, 'Vendas: 02/10/2026 a 05/10/2026')
-        self.assertContains(resposta, f'VENDA #{inicio.venda_id}')
-        self.assertContains(resposta, f'VENDA #{fim.venda_id}')
-        self.assertNotContains(resposta, f'VENDA #{fora.venda_id}')
-        self.assertNotContains(resposta, f'VENDA #{depois.venda_id}')
-        self.assertEqual(resposta.context['total_compras'], Decimal('50.00'))
-        self.assertEqual(resposta.context['total_pago'], Decimal('35.00'))
-        self.assertEqual(resposta.context['saldo_em_aberto'], Decimal('15.00'))
-
-    def test_intervalo_invalido_retorna_a_escolha_sem_imprimir(self):
+    def test_impede_selecao_vazia_duplicada_ou_de_outro_cliente(self):
+        fiado = self.criar_fiado(self.cliente, Decimal('10.00'))
+        outro = self.criar_fiado(self.outro_cliente, Decimal('99.00'))
         url = reverse('fiado:imprimir_cliente', args=[self.cliente.id])
-        for inicio, fim in (
-            ('05/10/2026', '02/10/2026'),
-            ('31/02/2026', '01/03/2026'),
-            ('2026-10-02', '05/10/2026'),
+        for dados in (
+            {},
+            {'fiados': [str(outro.id)]},
+            {'fiados': [str(fiado.id), str(outro.id)]},
+            {'fiados': ['abc']},
+            {'fiados': [str(fiado.id), str(fiado.id)]},
+            {'fiados': ['999999999']},
         ):
-            resposta = self.client.get(
-                url,
-                {'modo': 'periodo', 'inicio': inicio, 'fim': fim, 'auto': '1'},
-            )
+            resposta = self.client.post(url, dados)
             self.assertEqual(resposta.status_code, 200)
             self.assertTemplateUsed(resposta, 'fiado/imprimir_opcoes.html')
-            self.assertNotContains(resposta, 'EXTRATO DE FIADO')
             self.assertNotContains(resposta, 'window.print()')
 
-    def test_auto_isolado_nao_imprime_sem_escolher_filtro(self):
+    def test_get_nao_imprime_mesmo_com_parametros_antigos(self):
         resposta = self.client.get(
             reverse('fiado:imprimir_cliente', args=[self.cliente.id]),
-            {'auto': '1'},
+            {'modo': 'todas', 'auto': '1'},
         )
         self.assertTemplateUsed(resposta, 'fiado/imprimir_opcoes.html')
         self.assertNotContains(resposta, 'window.print()')
