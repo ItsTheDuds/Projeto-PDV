@@ -209,6 +209,7 @@
 
         <form method="post" id="formPagarTudo">
             {% csrf_token %}
+            <input type="hidden" name="tipo_recebimento" value="quitar_tudo">
             <input type="hidden" name="origem" value="{{ origem }}">
             <input type="hidden" name="valor" value="{{ saldo_total|floatformat:2 }}">
 
@@ -225,7 +226,7 @@
 
             <div class="modal-acoes">
                 <button id="cancelarPagarTudo" type="button" class="btn btn-light">Cancelar</button>
-                <button type="submit" class="btn btn-warning">
+                <button id="confirmarPagarTudo" type="submit" class="btn btn-warning">
                     Confirmar quitação de R$ {{ saldo_total|floatformat:2 }}
                 </button>
             </div>
@@ -252,6 +253,10 @@ abrirPagarTudo.addEventListener('click', function () {
 });
 
 cancelarPagarTudo.addEventListener('click', fecharModalPagarTudo);
+
+document.getElementById('formPagarTudo').addEventListener('submit', function () {
+    document.getElementById('confirmarPagarTudo').disabled = true;
+});
 
 modalPagarTudo.addEventListener('click', function (event) {
     if (event.target === modalPagarTudo) {
