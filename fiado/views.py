@@ -8,7 +8,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_http_methods
 
 from clientes.models import Cliente
 
@@ -321,105 +321,80 @@ def cliente_historico(request, cliente_id):
     )
 
 
-@require_GET
+@require_http_methods(['GET', 'POST'])
 def imprimir_cliente(request, cliente_id):
-    """Permite selecionar compras por data da venda antes do cupom térmico."""
+    """Seleciona compras fiadas para impressão térmica sem alterar pagamentos."""
     cliente = get_object_or_404(Cliente, id=cliente_id)
     origem = _origem(request)
-    retorno = 'receber' if request.GET.get('retorno') == 'receber' else 'conta'
-    modo = request.GET.get('modo', '')
-    inicio_texto = request.GET.get('inicio', '').strip()
-    fim_texto = request.GET.get('fim', '').strip()
+    parametros = request.POST if request.method == 'POST' else request.GET
+    retorno = 'receber' if parametros.get('retorno') == 'receber' else 'conta'
+
+    todas = list(
+        Fiado.objects.filter(venda__cliente=cliente)
+        .select_related('venda')
+        .order_by('-venda__criada_em', '-venda_id')
+    )
+
+    selecionados = {f.id for f in todas if f.saldo_devedor > 0}
     erro = ''
 
-    # Sem seleção, o usuário vê a tela de filtros em vez de imprimir tudo
-    # automaticamente. A opção ?auto=1 isolada não dispara a impressão.
-    if modo == 'periodo':
-        try:
-            if not re.fullmatch(r'\d{2}/\d{2}/\d{4}', inicio_texto):
-                raise ValueError()
-            if not re.fullmatch(r'\d{2}/\d{2}/\d{4}', fim_texto):
-                raise ValueError()
-            inicio = datetime.strptime(inicio_texto, '%d/%m/%Y').date()
-            fim = datetime.strptime(fim_texto, '%d/%m/%Y').date()
-            if inicio > fim:
-                erro = 'A data inicial não pode ser maior que a data final.'
-        except ValueError:
-            erro = 'Informe datas válidas no formato dd/mm/aaaa.'
-    elif modo != 'todas':
-        modo = 'todas'
-        # Usa a data da primeira compra fiada do cliente como sugestão inicial.
-        # Não altera o intervalo informado pelo usuário nas tentativas seguintes.
-        primeira_venda = (
-            Fiado.objects.filter(venda__cliente=cliente)
-            .order_by('venda__criada_em', 'id')
-            .values_list('venda__criada_em', flat=True)
-            .first()
-        )
-        if primeira_venda:
-            inicio_texto = timezone.localtime(primeira_venda).strftime('%d/%m/%Y')
+    if request.method == 'POST':
+        ids_raw = request.POST.getlist('fiados')
+        selecionados = set()
 
-        return render(
-            request,
-            'fiado/imprimir_opcoes.html',
-            {
-                'cliente': cliente,
-                'modo': modo,
-                'inicio': inicio_texto,
-                'fim': fim_texto,
-                'origem': origem,
-                'retorno': retorno,
-            },
-        )
+        if not ids_raw:
+            erro = 'Selecione ao menos uma compra para imprimir.'
+        elif len(ids_raw) != len(set(ids_raw)):
+            erro = 'A seleção contém compras repetidas.'
+        elif not all(re.fullmatch(r'[1-9]\\d*', id_raw) for id_raw in ids_raw):
+            erro = 'A seleção de compras é inválida.'
+        else:
+            selecionados = {int(id_raw) for id_raw in ids_raw}
+            disponiveis = {f.id for f in todas}
+            if not selecionados.issubset(disponiveis):
+                erro = 'Uma das compras selecionadas não pertence a este cliente.'
 
-    if erro:
-        return render(
-            request,
-            'fiado/imprimir_opcoes.html',
-            {
-                'cliente': cliente,
-                'modo': modo,
-                'inicio': inicio_texto,
-                'fim': fim_texto,
-                'origem': origem,
-                'retorno': retorno,
-                'erro': erro,
-            },
-        )
+        if not erro:
+            # Mantém a impressão apenas nas vendas selecionadas e
+            # recupera os itens/produtos de cada uma sem consultas repetidas.
+            fiados = list(
+                Fiado.objects.filter(venda__cliente=cliente, id__in=selecionados)
+                .select_related('venda')
+                .prefetch_related('venda__itens__produto')
+                .order_by('venda__criada_em', 'venda_id')
+            )
+            return render(
+                request,
+                'fiado/imprimir_cliente.html',
+                {
+                    'cliente': cliente,
+                    'fiados': fiados,
+                    'total_compras': sum((f.venda.total for f in fiados), Decimal('0.00')),
+                    'total_pago': sum((f.valor_pago for f in fiados), Decimal('0.00')),
+                    'saldo_em_aberto': sum((f.saldo_devedor for f in fiados), Decimal('0.00')),
+                    'emitido_em': timezone.now(),
+                    'auto_imprimir': True,
+                    'nome_estabelecimento': 'Águia Café',
+                    'origem': origem,
+                    'retorno': retorno,
+                },
+            )
 
-    fiados_query = Fiado.objects.filter(venda__cliente=cliente)
-    if modo == 'periodo':
-        fiados_query = fiados_query.filter(
-            venda__criada_em__date__gte=inicio,
-            venda__criada_em__date__lte=fim,
-        )
-
-    fiados = list(
-        fiados_query
-        .select_related('venda')
-        .prefetch_related('venda__itens__produto')
-        .order_by('venda__criada_em', 'venda_id')
-    )
-    total_compras = sum((f.venda.total for f in fiados), Decimal('0.00'))
-    total_pago = sum((f.valor_pago for f in fiados), Decimal('0.00'))
-    saldo_em_aberto = sum((f.saldo_devedor for f in fiados), Decimal('0.00'))
-
+    primeira = todas[-1].venda.criada_em if todas else None
     return render(
         request,
-        'fiado/imprimir_cliente.html',
+        'fiado/imprimir_opcoes.html',
         {
             'cliente': cliente,
-            'fiados': fiados,
-            'total_compras': total_compras,
-            'total_pago': total_pago,
-            'saldo_em_aberto': saldo_em_aberto,
-            'emitido_em': timezone.now(),
-            'auto_imprimir': request.GET.get('auto') == '1',
-            'nome_estabelecimento': 'Águia Café',
-            'modo': modo,
-            'inicio': inicio_texto,
-            'fim': fim_texto,
+            'fiados': todas,
+            'selecionados': selecionados,
+            'data_inicial': (
+                timezone.localtime(primeira).strftime('%d/%m/%Y')
+                if primeira else ''
+            ),
+            'data_final': timezone.localdate().strftime('%d/%m/%Y'),
             'origem': origem,
             'retorno': retorno,
+            'erro': erro,
         },
     )
