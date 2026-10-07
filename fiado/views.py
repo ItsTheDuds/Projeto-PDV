@@ -8,7 +8,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_GET, require_http_methods
 
 from clientes.models import Cliente
 
@@ -159,6 +159,8 @@ def receber_cliente(request, cliente_id):
     saldo_total = sum((fiado.saldo_devedor for fiado in fiados), Decimal('0.00'))
 
     if request.method == 'POST':
+        quitacao_total = request.POST.get('tipo_recebimento') == 'quitar_tudo'
+
         if not configuracao.senha_configurada:
             messages.error(request, 'Cadastre primeiro a senha de quitação do fiado.')
             return redirect('fiado:configurar_senha')
@@ -185,6 +187,10 @@ def receber_cliente(request, cliente_id):
             )
             return redirect(f"{reverse('fiado:receber_cliente', kwargs={'cliente_id': cliente.id})}?origem={origem}")
 
+        if quitacao_total and valor != saldo_total:
+            messages.error(request, 'O valor da quitação total mudou. Confira o saldo e tente novamente.')
+            return redirect(f"{reverse('fiado:receber_cliente', kwargs={'cliente_id': cliente.id})}?origem={origem}")
+
         with transaction.atomic():
             fiados_bloqueados = list(
                 Fiado.objects.select_for_update()
@@ -197,7 +203,7 @@ def receber_cliente(request, cliente_id):
                 (fiado.saldo_devedor for fiado in fiados_bloqueados),
                 Decimal('0.00'),
             )
-            if valor > saldo_atual:
+            if (quitacao_total and valor != saldo_atual) or valor > saldo_atual:
                 messages.error(
                     request,
                     'O saldo mudou enquanto o recebimento era processado. Tente novamente.',
@@ -231,6 +237,13 @@ def receber_cliente(request, cliente_id):
             request,
             f'Recebimento de R$ {valor:.2f} registrado para {cliente.nome}.',
         )
+        if quitacao_total:
+            # Usa o ID do recebimento para nao misturar pagamentos antigos.
+            url = reverse(
+                'fiado:imprimir_recebimento',
+                kwargs={'cliente_id': cliente.id, 'recebimento_id': recebimento.id},
+            )
+            return redirect(f'{url}?origem={origem}')
         return redirect(f"{reverse('fiado:cliente_historico', kwargs={'cliente_id': cliente.id})}?origem={origem}")
 
     return render(
@@ -396,5 +409,27 @@ def imprimir_cliente(request, cliente_id):
             'origem': origem,
             'retorno': retorno,
             'erro': erro,
+        },
+    )
+
+
+@require_GET
+def imprimir_recebimento(request, cliente_id, recebimento_id):
+    """Comprovante termico dos valores registrados em um unico recebimento."""
+    recebimento = get_object_or_404(
+        RecebimentoFiado.objects.select_related('cliente', 'usuario')
+        .prefetch_related('aplicacoes__fiado__venda__itens__produto'),
+        id=recebimento_id,
+        cliente_id=cliente_id,
+    )
+    return render(
+        request,
+        'fiado/imprimir_recebimento.html',
+        {
+            'cliente': recebimento.cliente,
+            'recebimento': recebimento,
+            'aplicacoes': recebimento.aplicacoes.all(),
+            'origem': _origem(request),
+            'nome_estabelecimento': 'Águia Café',
         },
     )
