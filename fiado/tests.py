@@ -229,6 +229,50 @@ class RecebimentoClienteTests(TestCase):
         )
 
 
+    def test_pagar_tudo_gera_comprovante_somente_do_recebimento(self):
+        self.fiados[0].registrar_pagamento(Decimal('2.00'))
+        response = self.client.post(
+            reverse('fiado:receber_cliente', args=[self.cliente.id]),
+            {'valor': '10.00', 'senha': '4321', 'tipo_recebimento': 'quitar_tudo'},
+        )
+        recebimento = RecebimentoFiado.objects.get()
+        url = reverse(
+            'fiado:imprimir_recebimento', args=[self.cliente.id, recebimento.id]
+        )
+        self.assertRedirects(response, url + '?origem=fiado', fetch_redirect_response=False)
+        self.assertEqual(recebimento.valor_total, Decimal('10.00'))
+        self.assertEqual(
+            list(recebimento.aplicacoes.values_list('valor', flat=True)),
+            [Decimal('3.00'), Decimal('7.00')],
+        )
+        recibo = self.client.get(url)
+        self.assertContains(recibo, 'COMPROVANTE DE QUITAÇÃO')
+        self.assertContains(recibo, 'window.print()')
+        self.assertContains(recibo, 'TOTAL QUITADO AGORA:')
+        self.assertContains(recibo, '10,00')
+
+    def test_pagar_tudo_invalido_nao_registra_recebimento(self):
+        url = reverse('fiado:receber_cliente', args=[self.cliente.id])
+        for dados in (
+            {'valor': '12.00', 'senha': 'errada'},
+            {'valor': '7.00', 'senha': '4321'},
+        ):
+            resposta = self.client.post(
+                url, {**dados, 'tipo_recebimento': 'quitar_tudo'},
+            )
+            self.assertEqual(resposta.status_code, 302)
+            self.assertFalse(RecebimentoFiado.objects.exists())
+
+    def test_pagamento_normal_nao_imprime_automaticamente(self):
+        resposta = self.client.post(
+            reverse('fiado:receber_cliente', args=[self.cliente.id]),
+            {'valor': '12.00', 'senha': '4321'},
+        )
+        self.assertRedirects(
+            resposta, reverse('fiado:cliente_historico', args=[self.cliente.id])
+        )
+
+
 class PainelResumoVendasPermissaoTests(TestCase):
     def setUp(self):
         self.operador = get_user_model().objects.create_user(
