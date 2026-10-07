@@ -346,7 +346,7 @@ def imprimir_cliente(request, cliente_id):
             erro = 'Selecione ao menos uma compra para imprimir.'
         elif len(ids_raw) != len(set(ids_raw)):
             erro = 'A seleção contém compras repetidas.'
-        elif not all(re.fullmatch(r'[1-9]\\d*', id_raw) for id_raw in ids_raw):
+        elif not all(re.fullmatch(r'[1-9]\d*', id_raw) for id_raw in ids_raw):
             erro = 'A seleção de compras é inválida.'
         else:
             selecionados = {int(id_raw) for id_raw in ids_raw}
