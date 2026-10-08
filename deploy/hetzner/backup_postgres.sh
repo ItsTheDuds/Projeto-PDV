@@ -5,24 +5,9 @@ ENV_FILE="${ENV_FILE:-$HOME/.config/aguiacafe.env}"
 BACKUP_DIR="${BACKUP_DIR:-$HOME/backups/aguiacafe}"
 BACKUP_RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-30}"
 BACKUP_TIMEZONE="${BACKUP_TIMEZONE:-America/Sao_Paulo}"
-BACKUP_HOUR_BRASILIA="${BACKUP_HOUR_BRASILIA:-02}"
-FORCE_BACKUP="${FORCE_BACKUP:-0}"
-
-case "$BACKUP_HOUR_BRASILIA" in
-    00|01|02|03|04|05|06|07|08|09|10|11|12|13|14|15|16|17|18|19|20|21|22|23) ;;
-    *)
-        echo "ERRO: BACKUP_HOUR_BRASILIA deve estar entre 00 e 23." >&2
-        exit 1
-        ;;
-esac
-
-HORA_BRASILIA="$(TZ="$BACKUP_TIMEZONE" date +%H)"
+# O agendamento é controlado exclusivamente pelo cron da Hetzner.
+# O fuso de Brasília é utilizado apenas para nomes de arquivos e registros.
 AGORA_BRASILIA="$(TZ="$BACKUP_TIMEZONE" date '+%Y-%m-%d %H:%M:%S %Z')"
-
-if [ "$FORCE_BACKUP" != "1" ] && [ "$HORA_BRASILIA" != "$BACKUP_HOUR_BRASILIA" ]; then
-    echo "Backup não executado. Agora em Brasília: $AGORA_BRASILIA. Horário programado: ${BACKUP_HOUR_BRASILIA}:00."
-    exit 0
-fi
 
 if [ ! -f "$ENV_FILE" ]; then
     echo "ERRO: arquivo de ambiente não encontrado em $ENV_FILE" >&2
