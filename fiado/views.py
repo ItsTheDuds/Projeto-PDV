@@ -8,10 +8,12 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.crypto import salted_hmac
 from django.views.decorators.http import require_GET, require_http_methods
 
 from clientes.models import Cliente
 
+from .forms import AutorizacaoEdicaoFiadoForm, ItensFiadoFormSet
 from .models import (
     AplicacaoRecebimento,
     ConfiguracaoFiado,
@@ -107,6 +109,76 @@ def detalhe(request, id):
             'origem': origem,
         },
     )
+
+
+def _revisao_itens(fiado):
+    estado = (
+        fiado.venda.total, fiado.valor_pago, fiado.pago,
+        list(fiado.venda.itens.order_by('id').values_list(
+            'id', 'produto_id', 'quantidade', 'preco_unitario', 'subtotal',
+        )),
+    )
+    return salted_hmac('fiado.editar_itens', str(estado)).hexdigest()
+
+
+@require_http_methods(['GET', 'POST'])
+def editar_itens(request, id):
+    origem = _origem(request)
+    url_detalhe = f"{reverse('fiado:detalhe', kwargs={'id': id})}?origem={origem}"
+    configuracao = ConfiguracaoFiado.carregar()
+
+    # O recebimento usa o mesmo bloqueio: pagamento e edição não podem gravar
+    # simultaneamente com base em um saldo desatualizado.
+    with transaction.atomic():
+        consulta = Fiado.objects.select_related('venda', 'venda__cliente')
+        if request.method == 'POST':
+            consulta = Fiado.objects.select_for_update().select_related('venda')
+        fiado = get_object_or_404(consulta, id=id)
+
+        if fiado.pago:
+            messages.error(request, 'Compras quitadas não podem ter os itens alterados.')
+            return redirect(url_detalhe)
+        if not configuracao.senha_configurada:
+            messages.error(request, 'Cadastre primeiro a senha de quitação do fiado para editar os itens.')
+            return redirect(url_detalhe)
+
+        revisao = _revisao_itens(fiado)
+        dados = request.POST if request.method == 'POST' else None
+        autorizacao = AutorizacaoEdicaoFiadoForm(dados, initial={'revisao': revisao})
+        formset = ItensFiadoFormSet(
+            dados, instance=fiado.venda, prefix='itens', valor_pago=fiado.valor_pago,
+        )
+
+        if request.method == 'POST':
+            autorizacao_valida = autorizacao.is_valid()
+            itens_validos = formset.is_valid()
+            if autorizacao_valida:
+                if not configuracao.conferir_senha(autorizacao.cleaned_data['senha']):
+                    autorizacao.add_error('senha', 'Senha do administrador inválida.')
+                elif autorizacao.cleaned_data['revisao'] != revisao:
+                    autorizacao.add_error(
+                        None,
+                        'A compra ou os pagamentos mudaram durante a edição. Recarregue a edição e confira os valores.',
+                    )
+                elif itens_validos:
+                    itens = formset.save(commit=False)
+                    for item in formset.deleted_objects:
+                        item.delete()
+                    for item in itens:
+                        item.subtotal = item.quantidade * item.preco_unitario
+                        item.save()
+                    fiado.venda.total = formset.total
+                    fiado.venda.save(update_fields=['total'])
+                    fiado.pago = fiado.valor_pago >= formset.total
+                    fiado.pago_em = timezone.now() if fiado.pago else None
+                    fiado.save(update_fields=['pago', 'pago_em'])
+                    messages.success(request, 'Itens da compra atualizados com sucesso.')
+                    return redirect(url_detalhe)
+
+    return render(request, 'fiado/editar_itens.html', {
+        'fiado': fiado, 'formset': formset, 'autorizacao': autorizacao,
+        'origem': origem,
+    })
 
 
 def configurar_senha(request):

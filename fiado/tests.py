@@ -4,7 +4,7 @@ from datetime import datetime
 from django.utils import timezone
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.urls import reverse
 
 from clientes.models import Cliente
@@ -56,6 +56,276 @@ class FiadoTests(TestCase):
         self.assertEqual(self.fiado.valor_pago, Decimal('5.00'))
         self.assertEqual(self.fiado.saldo_devedor, Decimal('0.00'))
 
+
+
+class EdicaoItensFiadoTests(TestCase):
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user(username='operador-edicao')
+        self.client.force_login(self.usuario)
+        self.cliente = Cliente.objects.create(nome='Cliente edição', celular='61977777777')
+        self.produto = produtosModel.objects.create(nome='Café', preco=Decimal('9.00'))
+        self.outro_produto = produtosModel.objects.create(nome='Salgado', preco=Decimal('8.00'))
+        self.venda = Venda.objects.create(
+            cliente=self.cliente, forma_pagamento='FIADO', total=Decimal('18.00'),
+        )
+        self.item = ItemVenda.objects.create(
+            venda=self.venda, produto=self.produto, quantidade=2,
+            preco_unitario=Decimal('9.00'), subtotal=Decimal('18.00'),
+        )
+        self.fiado = Fiado.objects.create(venda=self.venda)
+        ConfiguracaoFiado.carregar().definir_senha('4321')
+        self.url = reverse('fiado:editar_itens', args=[self.fiado.id])
+
+    def dados_edicao(self, **alteracoes):
+        resposta = self.client.get(self.url)
+        self.assertEqual(resposta.status_code, 200)
+        dados = {
+            'revisao': resposta.context['autorizacao'].initial['revisao'],
+            'senha': '4321',
+            'itens-TOTAL_FORMS': '1', 'itens-INITIAL_FORMS': '1',
+            'itens-0-id': str(self.item.id),
+            'itens-0-produto': str(self.produto.id),
+            'itens-0-quantidade': '3', 'itens-0-preco_unitario': '9.00',
+        }
+        dados.update(alteracoes)
+        return dados
+
+    def assert_compra_original(self):
+        self.venda.refresh_from_db()
+        self.item.refresh_from_db()
+        self.assertEqual(self.venda.total, Decimal('18.00'))
+        self.assertEqual(self.item.quantidade, 2)
+        self.assertEqual(self.item.preco_unitario, Decimal('9.00'))
+        self.assertEqual(self.item.subtotal, Decimal('18.00'))
+        self.assertEqual(self.venda.itens.count(), 1)
+
+    def test_detalhe_oferece_edicao_e_get_nao_altera_compra(self):
+        resposta = self.client.get(reverse('fiado:detalhe', args=[self.fiado.id]))
+        self.assertContains(resposta, 'Editar itens')
+        resposta = self.client.get(self.url)
+        self.assertContains(resposta, 'mesma senha utilizada para quitar')
+        self.assertContains(resposta, 'Adicionar produto')
+        self.assert_compra_original()
+
+    def test_corrige_produto_quantidade_preco_e_recalcula_saldo(self):
+        self.fiado.registrar_pagamento(Decimal('5.00'))
+        dados = self.dados_edicao(**{
+            'itens-0-produto': str(self.outro_produto.id),
+            'itens-0-preco_unitario': '8.50', 'origem': 'clientes',
+            'total': '0.01', 'itens-0-subtotal': '0.01',
+        })
+        resposta = self.client.post(self.url, dados)
+        self.assertRedirects(
+            resposta,
+            reverse('fiado:detalhe', args=[self.fiado.id]) + '?origem=clientes',
+        )
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.produto, self.outro_produto)
+        self.assertEqual(self.item.quantidade, 3)
+        self.assertEqual(self.item.subtotal, Decimal('25.50'))
+        fiado = Fiado.objects.select_related('venda').get(pk=self.fiado.id)
+        self.assertEqual(fiado.venda.total, Decimal('25.50'))
+        self.assertEqual(fiado.valor_pago, Decimal('5.00'))
+        self.assertEqual(fiado.saldo_devedor, Decimal('20.50'))
+        self.assertFalse(fiado.pago)
+        self.assertFalse(RecebimentoFiado.objects.exists())
+
+    def test_adiciona_produto_e_remove_item_lancado_a_mais(self):
+        dados = self.dados_edicao(**{
+            'itens-TOTAL_FORMS': '2', 'itens-0-DELETE': 'on',
+            'itens-1-produto': str(self.outro_produto.id),
+            'itens-1-quantidade': '2', 'itens-1-preco_unitario': '8.00',
+        })
+        self.assertEqual(self.client.post(self.url, dados).status_code, 302)
+        self.assertFalse(ItemVenda.objects.filter(pk=self.item.pk).exists())
+        novo = self.venda.itens.get()
+        self.assertEqual(novo.produto, self.outro_produto)
+        self.assertEqual(novo.subtotal, Decimal('16.00'))
+        self.venda.refresh_from_db()
+        self.assertEqual(self.venda.total, Decimal('16.00'))
+
+    def test_senha_ausente_errada_e_senha_de_login_nao_autorizam(self):
+        self.usuario.set_password('senha-login')
+        self.usuario.save()
+        self.client.force_login(self.usuario)
+        for senha in ('', 'errada', 'senha-login'):
+            with self.subTest(senha=senha):
+                resposta = self.client.post(self.url, self.dados_edicao(senha=senha))
+                self.assertEqual(resposta.status_code, 200)
+                self.assertTrue(resposta.context['autorizacao'].errors)
+                if senha:
+                    self.assertNotContains(resposta, f'value="{senha}"')
+                self.assert_compra_original()
+
+    def test_remove_todos_os_itens_e_encerra_saldo_sem_criar_pagamento(self):
+        outro_item = ItemVenda.objects.create(
+            venda=self.venda, produto=self.outro_produto, quantidade=1,
+            preco_unitario=Decimal('8.00'), subtotal=Decimal('8.00'),
+        )
+        self.venda.total = Decimal('26.00')
+        self.venda.save(update_fields=['total'])
+        dados = self.dados_edicao(**{
+            'itens-TOTAL_FORMS': '2', 'itens-INITIAL_FORMS': '2',
+            'itens-0-DELETE': 'on',
+            'itens-1-id': str(outro_item.id), 'itens-1-DELETE': 'on',
+        })
+        # O navegador não envia os campos desabilitados das linhas removidas.
+        for campo in ('produto', 'quantidade', 'preco_unitario'):
+            dados.pop(f'itens-0-{campo}')
+
+        resposta = self.client.post(self.url, dados)
+        self.assertRedirects(
+            resposta, reverse('fiado:detalhe', args=[self.fiado.id]) + '?origem=fiado',
+        )
+        fiado = Fiado.objects.select_related('venda').get(pk=self.fiado.pk)
+        self.assertFalse(fiado.venda.itens.exists())
+        self.assertEqual(fiado.venda.total, Decimal('0.00'))
+        self.assertEqual(fiado.valor_pago, Decimal('0.00'))
+        self.assertEqual(fiado.saldo_devedor, Decimal('0.00'))
+        self.assertTrue(fiado.pago)
+        self.assertFalse(Fiado.objects.filter(pk=fiado.pk, pago=False).exists())
+        self.assertFalse(RecebimentoFiado.objects.exists())
+        detalhe = self.client.get(reverse('fiado:detalhe', args=[fiado.id]))
+        self.assertContains(detalhe, 'Todos os itens desta compra foram removidos.')
+        self.assertContains(detalhe, 'SEM ITENS')
+        self.assertNotContains(detalhe, 'Receber pagamento')
+
+    def test_remover_todos_os_itens_exige_senha_correta(self):
+        for senha in ('', 'errada'):
+            with self.subTest(senha=senha):
+                dados = self.dados_edicao(senha=senha, **{'itens-0-DELETE': 'on'})
+                resposta = self.client.post(self.url, dados)
+                self.assertEqual(resposta.status_code, 200)
+                self.assertTrue(resposta.context['autorizacao'].errors)
+                self.assert_compra_original()
+
+    def test_nao_remove_todos_os_itens_com_pagamento_registrado(self):
+        self.fiado.registrar_pagamento(Decimal('5.00'))
+        dados = self.dados_edicao(**{'itens-0-DELETE': 'on'})
+        resposta = self.client.post(self.url, dados)
+        self.assertContains(resposta, 'não pode ser menor que o valor já pago')
+        self.assert_compra_original()
+        self.fiado.refresh_from_db()
+        self.assertEqual(self.fiado.valor_pago, Decimal('5.00'))
+        self.assertFalse(self.fiado.pago)
+
+    def test_admin_tambem_precisa_informar_a_senha(self):
+        self.usuario.is_superuser = True
+        self.usuario.save()
+        resposta = self.client.post(self.url, self.dados_edicao(senha='errada'))
+        self.assertEqual(resposta.status_code, 200)
+        self.assert_compra_original()
+
+    def test_preserva_espacos_da_senha_de_quitacao(self):
+        ConfiguracaoFiado.carregar().definir_senha(' 4321 ')
+        dados = self.dados_edicao(senha='4321')
+        self.assertEqual(self.client.post(self.url, dados).status_code, 200)
+        self.assert_compra_original()
+        dados['senha'] = ' 4321 '
+        self.assertEqual(self.client.post(self.url, dados).status_code, 302)
+
+    def test_sem_senha_configurada_nao_permite_edicao(self):
+        dados = self.dados_edicao()
+        ConfiguracaoFiado.objects.update(senha_hash='')
+        for metodo in (self.client.get, self.client.post):
+            resposta = metodo(self.url, dados)
+            self.assertEqual(resposta.status_code, 302)
+            self.assert_compra_original()
+
+    def test_rejeita_quantidade_preco_produto_e_total_invalidos(self):
+        dados_originais = self.dados_edicao()
+        for alteracoes in (
+            {'itens-0-quantidade': '0'}, {'itens-0-quantidade': '-1'},
+            {'itens-0-quantidade': '1.5'}, {'itens-0-quantidade': '2147483648'},
+            {'itens-0-preco_unitario': '0'}, {'itens-0-preco_unitario': '-1'},
+            {'itens-0-preco_unitario': 'NaN'}, {'itens-0-preco_unitario': 'Infinity'},
+            {'itens-0-preco_unitario': '1.001'}, {'itens-0-produto': '999999999'},
+            {'itens-0-quantidade': '2147483647', 'itens-0-preco_unitario': '99999999.99'},
+            {'itens-TOTAL_FORMS': '0', 'itens-INITIAL_FORMS': '0'},
+            {'itens-TOTAL_FORMS': '1001'},
+        ):
+            with self.subTest(alteracoes=alteracoes):
+                resposta = self.client.post(self.url, {**dados_originais, **alteracoes})
+                self.assertEqual(resposta.status_code, 200)
+                self.assertFalse(resposta.context['formset'].is_valid())
+                self.assert_compra_original()
+
+    def test_rejeita_id_de_item_de_outra_compra(self):
+        outra_venda = Venda.objects.create(forma_pagamento='FIADO', total=Decimal('8.00'))
+        outro_item = ItemVenda.objects.create(
+            venda=outra_venda, produto=self.outro_produto, quantidade=1,
+            preco_unitario=Decimal('8.00'), subtotal=Decimal('8.00'),
+        )
+        dados = self.dados_edicao(**{'itens-0-id': str(outro_item.id)})
+        self.assertEqual(self.client.post(self.url, dados).status_code, 200)
+        self.assert_compra_original()
+        outro_item.refresh_from_db()
+        self.assertEqual(outro_item.quantidade, 1)
+
+    def test_nao_omite_itens_nem_repete_ids(self):
+        dados_originais = self.dados_edicao()
+        for alteracoes in (
+            {'itens-INITIAL_FORMS': '0'},
+            {'itens-0-id': ''},
+            {'itens-TOTAL_FORMS': '2', 'itens-INITIAL_FORMS': '2',
+             'itens-1-id': str(self.item.id), 'itens-1-produto': str(self.produto.id),
+             'itens-1-quantidade': '1', 'itens-1-preco_unitario': '9.00'},
+        ):
+            with self.subTest(alteracoes=alteracoes):
+                resposta = self.client.post(self.url, {**dados_originais, **alteracoes})
+                self.assertEqual(resposta.status_code, 200)
+                self.assert_compra_original()
+
+    def test_rejeita_total_menor_que_pagamento_e_permite_igual(self):
+        self.fiado.registrar_pagamento(Decimal('9.00'))
+        resposta = self.client.post(self.url, self.dados_edicao(**{
+            'itens-0-quantidade': '1', 'itens-0-preco_unitario': '8.00',
+        }))
+        self.assertContains(resposta, 'não pode ser menor que o valor já pago')
+        self.assert_compra_original()
+        resposta = self.client.post(self.url, self.dados_edicao(**{'itens-0-quantidade': '1'}))
+        self.assertEqual(resposta.status_code, 302)
+        self.fiado.refresh_from_db()
+        self.assertTrue(self.fiado.pago)
+        self.assertEqual(self.fiado.valor_pago, Decimal('9.00'))
+        self.assertIsNotNone(self.fiado.pago_em)
+        self.assertFalse(RecebimentoFiado.objects.exists())
+
+    def test_quitado_nao_permite_get_nem_post(self):
+        dados = self.dados_edicao()
+        self.fiado.marcar_como_pago()
+        for metodo in (self.client.get, self.client.post):
+            self.assertEqual(metodo(self.url, dados).status_code, 302)
+            self.assert_compra_original()
+        detalhe = self.client.get(reverse('fiado:detalhe', args=[self.fiado.id]))
+        self.assertNotContains(detalhe, 'Editar itens')
+
+    def test_pagamento_durante_edicao_exige_recarregar(self):
+        dados = self.dados_edicao()
+        self.fiado.registrar_pagamento(Decimal('1.00'))
+        resposta = self.client.post(self.url, dados)
+        self.assertContains(resposta, 'mudaram durante a edição')
+        self.assert_compra_original()
+
+    def test_edicao_simultanea_nao_sobrescreve_alteracao_anterior(self):
+        dados = self.dados_edicao()
+        self.assertEqual(self.client.post(self.url, dados).status_code, 302)
+        resposta = self.client.post(self.url, {**dados, 'itens-0-quantidade': '4'})
+        self.assertContains(resposta, 'mudaram durante a edição')
+        self.item.refresh_from_db()
+        self.venda.refresh_from_db()
+        self.assertEqual(self.item.quantidade, 3)
+        self.assertEqual(self.venda.total, Decimal('27.00'))
+
+    def test_exige_login_e_csrf(self):
+        dados = self.dados_edicao()
+        cliente_csrf = Client(enforce_csrf_checks=True)
+        cliente_csrf.force_login(self.usuario)
+        self.assertEqual(cliente_csrf.post(self.url, dados).status_code, 403)
+        self.client.logout()
+        self.assertEqual(self.client.get(self.url).status_code, 302)
+        self.assertEqual(self.client.post(self.url, dados).status_code, 302)
+        self.assert_compra_original()
 
 
 class PermissaoSenhaFiadoTests(TestCase):

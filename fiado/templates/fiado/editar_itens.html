@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% load l10n %}
+
+{% block title %}Editar itens do fiado{% endblock %}
+
+{% block extra_head %}
+<style>
+    .item-edicao select { min-width: 200px; }
+    .item-edicao input[type="number"] { min-width: 110px; }
+    .item-edicao input[type="checkbox"] { width: auto; }
+    .item-removido { opacity: .5; }
+    .errorlist { color: #842029; padding-left: 1.2rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Editar itens da compra #{{ fiado.venda.id }}</h1>
+            <p class="subtitle">{{ fiado.venda.cliente.nome }} — {{ fiado.venda.cliente.celular_formatado }}</p>
+        </div>
+    </div>
+    <p>Corrija os produtos, as quantidades ou os preços. Marque “Remover” nos itens lançados a mais ou adicione os produtos que faltaram.</p>
+    <p class="muted">Se a compra ainda não teve pagamentos, você pode remover todos os itens para zerar o valor e encerrar o saldo.</p>
+    <form method="post" id="editar-itens">
+        {% csrf_token %}
+        <input type="hidden" name="origem" value="{{ origem }}">
+        {{ autorizacao.revisao }}{{ autorizacao.revisao.errors }}
+        {{ autorizacao.non_field_errors }}
+        {{ formset.management_form }}
+        {{ formset.non_form_errors }}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>PRODUTO</th><th>QTD.</th><th>PREÇO (R$)</th><th>SUBTOTAL</th><th>REMOVER</th></tr>
+                </thead>
+                <tbody id="itens-edicao">
+                    {% for form in formset %}
+                        {% include 'fiado/_item_edicao.html' %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <button type="button" id="adicionar-item" class="btn btn-outline" style="margin-top:1rem;">Adicionar produto</button>
+        <div class="grid grid-3" style="margin-top:1.5rem;" aria-live="polite">
+            <div class="card">
+                <div class="muted">Novo valor da compra</div>
+                <div class="money" id="total-edicao">—</div>
+            </div>
+            <div class="card">
+                <div class="muted">Já pago</div>
+                <div class="money money-ok">R$ {{ fiado.valor_pago|floatformat:2 }}</div>
+            </div>
+            <div class="card">
+                <div class="muted">Novo saldo</div>
+                <div class="money" id="saldo-edicao" data-pago="{{ fiado.valor_pago|unlocalize }}">—</div>
+            </div>
+        </div>
+        <p class="muted" style="margin-top:1rem;">O valor da compra deve ser igual ou maior que o valor já pago. As alterações só serão gravadas após a confirmação da senha.</p>
+        <div style="max-width:400px;">
+            {{ autorizacao.senha.label_tag }}
+            {{ autorizacao.senha.errors }}
+            {{ autorizacao.senha }}
+            <p class="muted">{{ autorizacao.senha.help_text }}</p>
+        </div>
+        <div class="form-actions">
+            <a href="{% url 'fiado:detalhe' fiado.id %}?origem={{ origem }}" class="btn btn-light">Cancelar</a>
+            <a href="{% url 'fiado:editar_itens' fiado.id %}?origem={{ origem }}" class="btn btn-outline">Recarregar edição</a>
+            <button type="submit" class="btn btn-success">Salvar alterações</button>
+        </div>
+    </form>
+</div>
+<template id="novo-item">
+    {% include 'fiado/_item_edicao.html' with form=formset.empty_form %}
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+    const linhas = document.getElementById('itens-edicao');
+    const totalForms = document.getElementById('id_itens-TOTAL_FORMS');
+    const saldo = document.getElementById('saldo-edicao');
+    const pago = Math.round(Number(saldo.dataset.pago) * 100);
+    const moeda = new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL'});
+    function atualizar() {
+        let total = 0;
+        linhas.querySelectorAll('.item-edicao').forEach(linha => {
+            const quantidade = Number(linha.querySelector('[name$="-quantidade"]').value);
+            const preco = Math.round(Number(linha.querySelector('[name$="-preco_unitario"]').value) * 100);
+            const removido = linha.querySelector('[name$="-DELETE"]').checked;
+            const subtotal = quantidade * preco;
+            linha.classList.toggle('item-removido', removido);
+            linha.querySelectorAll('select, input[type="number"]').forEach(campo => {
+                campo.disabled = removido;
+            });
+            linha.querySelector('.subtotal-item').textContent = moeda.format(subtotal / 100);
+            if (!removido) total += subtotal;
+        });
+        document.getElementById('total-edicao').textContent = moeda.format(total / 100);
+        saldo.textContent = moeda.format((total - pago) / 100);
+        saldo.classList.toggle('money-open', total < pago);
+    }
+    linhas.addEventListener('input', atualizar);
+    linhas.addEventListener('change', atualizar);
+    document.getElementById('adicionar-item').addEventListener('click', () => {
+        const indice = Number(totalForms.value);
+        if (indice >= Number(document.getElementById('id_itens-MAX_NUM_FORMS').value)) return;
+        const modelo = document.getElementById('novo-item').innerHTML.replace(/__prefix__/g, indice);
+        linhas.insertAdjacentHTML('beforeend', modelo);
+        totalForms.value = indice + 1;
+        const novaLinha = linhas.lastElementChild;
+        novaLinha.querySelector('[name$="-quantidade"]').value = 1;
+        novaLinha.querySelector('select').focus();
+        atualizar();
+    });
+    atualizar();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,12 @@
+<tr class="item-edicao">
+    <td>
+        {% for hidden in form.hidden_fields %}{{ hidden }}{{ hidden.errors }}{% endfor %}
+        {{ form.non_field_errors }}
+        {{ form.produto.errors }}
+        {{ form.produto }}
+    </td>
+    <td>{{ form.quantidade.errors }}{{ form.quantidade }}</td>
+    <td>{{ form.preco_unitario.errors }}{{ form.preco_unitario }}</td>
+    <td class="money subtotal-item">—</td>
+    <td class="text-center">{{ form.DELETE.errors }}<label for="{{ form.DELETE.id_for_label }}">Remover {{ form.DELETE }}</label></td>
+</tr>

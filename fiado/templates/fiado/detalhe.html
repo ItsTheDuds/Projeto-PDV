@@ -10,7 +10,9 @@
             <p class="subtitle">{{ fiado.venda.cliente.nome }} — {{ fiado.venda.cliente.celular_formatado }}</p>
         </div>
         <div>
-            {% if fiado.pago %}
+            {% if fiado.venda.total == 0 %}
+                <span class="badge badge-paid">SEM ITENS</span>
+            {% elif fiado.pago %}
                 <span class="badge badge-paid">PAGO</span>
             {% elif fiado.valor_pago > 0 %}
                 <span class="badge badge-open">PAGO PARCIALMENTE</span>
@@ -33,6 +35,8 @@
                     <td>R$ {{ item.preco_unitario|floatformat:2 }}</td>
                     <td class="money">R$ {{ item.subtotal|floatformat:2 }}</td>
                 </tr>
+                {% empty %}
+                <tr><td colspan="4" class="muted">Todos os itens desta compra foram removidos.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -61,6 +65,13 @@
            class="btn btn-outline">Imprimir 80 mm</a>
 
         {% if not fiado.pago %}
+            {% if senha_configurada %}
+            <a href="{% url 'fiado:editar_itens' fiado.id %}?origem={{ origem }}" class="btn btn-primary">
+                Editar itens
+            </a>
+            {% else %}
+            <span class="muted">Configure a senha de quitação para editar os itens.</span>
+            {% endif %}
             <a href="{% url 'fiado:receber_cliente' fiado.venda.cliente.id %}?origem={{ origem }}" class="btn btn-success">
                 Receber pagamento
             </a>
